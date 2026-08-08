@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\GRD.SpChn.OrderManagement.Domain\GRD.SpChn.OrderManagement.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.SharedKernel\GRD.SpChn.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Contracts\GRD.SpChn.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.EventBus.Abstractions\GRD.SpChn.EventBus.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="MediatR" Version="14.2.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

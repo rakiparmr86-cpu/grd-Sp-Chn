@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-GRD.SpChn.OutboxPublisher-4e03a757-4e19-45ca-ac84-67c38ead0109</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\GRD.SpChn.Contracts\GRD.SpChn.Contracts.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\GRD.SpChn.EventBus.Abstractions\GRD.SpChn.EventBus.Abstractions.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\GRD.SpChn.EventBus.RabbitMQ\GRD.SpChn.EventBus.RabbitMQ.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\GRD.SpChn.Observability\GRD.SpChn.Observability.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\GRD.SpChn.Persistence.MySql\GRD.SpChn.Persistence.MySql.csproj" />
+  </ItemGroup>
+</Project>

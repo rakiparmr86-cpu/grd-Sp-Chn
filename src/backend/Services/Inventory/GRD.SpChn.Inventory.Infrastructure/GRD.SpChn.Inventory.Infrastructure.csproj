@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\GRD.SpChn.Inventory.Domain\GRD.SpChn.Inventory.Domain.csproj" />
+    <ProjectReference Include="..\GRD.SpChn.Inventory.Application\GRD.SpChn.Inventory.Application.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.EventBus.RabbitMQ\GRD.SpChn.EventBus.RabbitMQ.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Observability\GRD.SpChn.Observability.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Persistence.MySql\GRD.SpChn.Persistence.MySql.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.79" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

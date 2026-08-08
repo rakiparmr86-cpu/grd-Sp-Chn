@@ -1,0 +1,6 @@
+@GRD.SpChn.Supplier.Api_HostAddress = http://localhost:5141
+
+GET {{GRD.SpChn.Supplier.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
