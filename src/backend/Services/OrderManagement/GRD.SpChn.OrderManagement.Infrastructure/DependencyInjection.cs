@@ -1,4 +1,7 @@
 using GRD.SpChn.EventBus.RabbitMQ;
+using GRD.SpChn.Contracts.IntegrationEvents;
+using GRD.SpChn.OrderManagement.Application.Abstractions;
+using GRD.SpChn.OrderManagement.Application.IntegrationEvents;
 using GRD.SpChn.Persistence.MySql;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +16,19 @@ public static class DependencyInjection
     {
         services.AddMySqlPersistence(configuration);
         services.AddRabbitMqEventBus(configuration);
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddRabbitMqConsumer<
+            StockReservedIntegrationEvent,
+            StockReservedIntegrationEventHandler>(
+            MessagingTopology.InventoryExchange,
+            "order-management.stock-reserved",
+            MessagingTopology.StockReservedRoutingKey);
+        services.AddRabbitMqConsumer<
+            StockReservationFailedIntegrationEvent,
+            StockReservationFailedIntegrationEventHandler>(
+            MessagingTopology.InventoryExchange,
+            "order-management.stock-reservation-failed",
+            MessagingTopology.StockReservationFailedRoutingKey);
 
         return services;
     }

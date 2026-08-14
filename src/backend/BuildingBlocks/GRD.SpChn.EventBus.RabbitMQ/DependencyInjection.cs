@@ -1,4 +1,5 @@
 using GRD.SpChn.EventBus.Abstractions;
+using GRD.SpChn.Contracts.IntegrationEvents;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +19,26 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(RabbitMqOptions.SectionName));
 
         services.AddSingleton<IEventBus, RabbitMqEventBus>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddRabbitMqConsumer<TEvent, THandler>(
+        this IServiceCollection services,
+        string exchangeName,
+        string queueName,
+        string routingKey)
+        where TEvent : IIntegrationEvent
+        where THandler : class, IIntegrationEventHandler<TEvent>
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(exchangeName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(queueName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(routingKey);
+
+        services.AddScoped<IIntegrationEventHandler<TEvent>, THandler>();
+        services.AddSingleton(
+            new RabbitMqSubscription<TEvent>(exchangeName, queueName, routingKey));
+        services.AddHostedService<RabbitMqConsumerHostedService<TEvent>>();
 
         return services;
     }

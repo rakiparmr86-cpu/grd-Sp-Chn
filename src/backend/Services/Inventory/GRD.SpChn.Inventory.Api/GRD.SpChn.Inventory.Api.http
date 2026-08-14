@@ -1,6 +1,14 @@
-@GRD.SpChn.Inventory.Api_HostAddress = http://localhost:5018
+@InventoryApi = http://localhost:5018
+@ProductId = 22222222-2222-2222-2222-222222222222
 
-GET {{GRD.SpChn.Inventory.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+PUT {{InventoryApi}}/stock/{{ProductId}}
+Content-Type: application/json
+
+{
+  "availableQuantity": 10
+}
 
 ###
+
+GET {{InventoryApi}}/stock/{{ProductId}}
+Accept: application/json
