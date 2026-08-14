@@ -1,4 +1,4 @@
-@GRD.SpChn.Notifications.Api_HostAddress = http://localhost:5173
+@GRD.SpChn.Notifications.Api_HostAddress = http://localhost:7002
 
 GET {{GRD.SpChn.Notifications.Api_HostAddress}}/weatherforecast/
 Accept: application/json

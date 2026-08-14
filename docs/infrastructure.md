@@ -46,7 +46,7 @@ deployment platform's secret manager.
 
 ## Gateway routes
 
-In Development, the gateway listens on `http://localhost:5012` and forwards paths
+In Development, the gateway listens on `http://localhost:7000` and forwards paths
 under `/api/<service>/...` to the ports in each service's launch profile. Production
 destinations should be supplied through configuration or environment variables.
 
