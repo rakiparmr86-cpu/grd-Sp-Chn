@@ -46,6 +46,44 @@ public sealed class LayerDependencyTests
             ".Api");
     }
 
+    [Fact]
+    public void Services_do_not_reference_another_services_projects()
+    {
+        var root = FindRepositoryRoot();
+        var servicesRoot = Path.Combine(root, "src", "backend", "Services");
+        var projects = Directory.EnumerateFiles(
+            servicesRoot,
+            "*.csproj",
+            SearchOption.AllDirectories);
+
+        foreach (var project in projects)
+        {
+            var owner = Path.GetRelativePath(servicesRoot, project)
+                .Split(Path.DirectorySeparatorChar)[0];
+            var document = XDocument.Load(project);
+            var referencedServiceProjects = document
+                .Descendants()
+                .Where(element => element.Name.LocalName == "ProjectReference")
+                .Select(element => element.Attribute("Include")?.Value)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => Path.GetFullPath(
+                    Path.Combine(Path.GetDirectoryName(project)!, value!)))
+                .Where(path => path.StartsWith(
+                    servicesRoot + Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase));
+
+            foreach (var referencedProject in referencedServiceProjects)
+            {
+                var referencedOwner = Path.GetRelativePath(servicesRoot, referencedProject)
+                    .Split(Path.DirectorySeparatorChar)[0];
+                Assert.True(
+                    string.Equals(owner, referencedOwner, StringComparison.OrdinalIgnoreCase),
+                    $"Service '{owner}' must communicate with '{referencedOwner}' through " +
+                    $"an integration contract, not project reference '{referencedProject}'.");
+            }
+        }
+    }
+
     private static void AssertReferencesDoNotContain(
         IEnumerable<string> projects,
         params string[] forbiddenSegments)

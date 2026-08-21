@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <BuildProjectReferences>true</BuildProjectReferences>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,9 +14,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GRD.SpChn.Identity.Application\GRD.SpChn.Identity.Application.csproj" />
-    <ProjectReference Include="..\GRD.SpChn.Identity.Infrastructure\GRD.SpChn.Identity.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Observability\GRD.SpChn.Observability.csproj" />
+    <ProjectReference Include="..\GRD.SpChn.Identity.Application\GRD.SpChn.Identity.Application.csproj"
+                      ReferenceOutputAssembly="true"
+                      Private="true" />
+    <ProjectReference Include="..\GRD.SpChn.Identity.Infrastructure\GRD.SpChn.Identity.Infrastructure.csproj"
+                      ReferenceOutputAssembly="true"
+                      Private="true" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Observability\GRD.SpChn.Observability.csproj"
+                      ReferenceOutputAssembly="true"
+                      Private="true" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
-using FluentValidation;
 using GRD.SpChn.OrderManagement.Application.Orders;
 using GRD.SpChn.OrderManagement.Application.Orders.CreateOrder;
 using GRD.SpChn.OrderManagement.Application.Orders.GetOrder;
+using GRD.SpChn.SharedKernel;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,7 +16,6 @@ public sealed class OrdersController(ISender sender) : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(
         [FromBody] CreateOrderRequest request,
-        [FromServices] IValidator<CreateOrderCommand> validator,
         CancellationToken cancellationToken)
     {
         var command = new CreateOrderCommand(
@@ -24,14 +23,13 @@ public sealed class OrdersController(ISender sender) : ControllerBase
             (request.Items ?? [])
                 .Select(item => new CreateOrderItem(item.ProductId, item.Quantity))
                 .ToArray());
-        var validation = await validator.ValidateAsync(command, cancellationToken);
-        if (!validation.IsValid)
+        var result = await sender.Send(command, cancellationToken);
+        if (result.IsFailure)
         {
-            return ValidationProblem(
-                new ValidationProblemDetails(validation.ToDictionary()));
+            return ToProblem(result);
         }
 
-        var order = await sender.Send(command, cancellationToken);
+        var order = result.Value;
         return AcceptedAtAction(nameof(GetById), new { id = order.Id }, order);
     }
 
@@ -42,8 +40,34 @@ public sealed class OrdersController(ISender sender) : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
-        var order = await sender.Send(new GetOrderQuery(id), cancellationToken);
-        return order is null ? NotFound() : Ok(order);
+        var result = await sender.Send(new GetOrderQuery(id), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : ToProblem(result);
+    }
+
+    private IActionResult ToProblem<T>(Result<T> result)
+    {
+        if (result.Errors.All(error => error.Type == ErrorType.Validation))
+        {
+            var errors = result.Errors
+                .GroupBy(error => error.Target ?? error.Code)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(error => error.Description).ToArray());
+            return ValidationProblem(new ValidationProblemDetails(errors));
+        }
+
+        var error = result.FirstError;
+        var statusCode = error.Type switch
+        {
+            ErrorType.NotFound => StatusCodes.Status404NotFound,
+            ErrorType.Conflict => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status400BadRequest
+        };
+
+        return Problem(
+            statusCode: statusCode,
+            title: error.Code,
+            detail: error.Description);
     }
 }
 

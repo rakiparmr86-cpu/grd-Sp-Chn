@@ -190,3 +190,8 @@ dotnet test GRD.SpChn.sln --no-build
 
 For schema details, environment-variable reference, health endpoints, and delivery
 semantics, see [docs/infrastructure.md](docs/infrastructure.md).
+
+For the required design patterns, layer ownership, development sequence, concrete
+Gateway-to-service communication flow, transaction boundaries, retry/dead-letter
+policy, and pull-request checklist, see
+[docs/event-driven-development.md](docs/event-driven-development.md).

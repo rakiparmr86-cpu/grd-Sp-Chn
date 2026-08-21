@@ -66,7 +66,10 @@ internal sealed class RabbitMqEventBus(
             _options.ClientProvidedName,
             cancellationToken);
         await using var channel = await connection.CreateChannelAsync(
-            cancellationToken: cancellationToken);
+            new CreateChannelOptions(
+                publisherConfirmationsEnabled: true,
+                publisherConfirmationTrackingEnabled: true),
+            cancellationToken);
 
         await channel.ExchangeDeclareAsync(
             exchangeName,

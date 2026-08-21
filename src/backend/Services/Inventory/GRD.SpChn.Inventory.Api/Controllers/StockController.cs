@@ -1,7 +1,7 @@
-using FluentValidation;
 using GRD.SpChn.Inventory.Application.Stock;
 using GRD.SpChn.Inventory.Application.Stock.GetStock;
 using GRD.SpChn.Inventory.Application.Stock.SetStock;
+using GRD.SpChn.SharedKernel;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,18 +17,11 @@ public sealed class StockController(ISender sender) : ControllerBase
     public async Task<IActionResult> SetAvailableQuantity(
         Guid productId,
         [FromBody] SetStockRequest request,
-        [FromServices] IValidator<SetStockCommand> validator,
         CancellationToken cancellationToken)
     {
         var command = new SetStockCommand(productId, request.AvailableQuantity);
-        var validation = await validator.ValidateAsync(command, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(
-                new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
-        return Ok(await sender.Send(command, cancellationToken));
+        var result = await sender.Send(command, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : ToProblem(result);
     }
 
     [HttpGet("{productId:guid}")]
@@ -38,8 +31,34 @@ public sealed class StockController(ISender sender) : ControllerBase
         Guid productId,
         CancellationToken cancellationToken)
     {
-        var stock = await sender.Send(new GetStockQuery(productId), cancellationToken);
-        return stock is null ? NotFound() : Ok(stock);
+        var result = await sender.Send(new GetStockQuery(productId), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : ToProblem(result);
+    }
+
+    private IActionResult ToProblem<T>(Result<T> result)
+    {
+        if (result.Errors.All(error => error.Type == ErrorType.Validation))
+        {
+            var errors = result.Errors
+                .GroupBy(error => error.Target ?? error.Code)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(error => error.Description).ToArray());
+            return ValidationProblem(new ValidationProblemDetails(errors));
+        }
+
+        var error = result.FirstError;
+        var statusCode = error.Type switch
+        {
+            ErrorType.NotFound => StatusCodes.Status404NotFound,
+            ErrorType.Conflict => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status400BadRequest
+        };
+
+        return Problem(
+            statusCode: statusCode,
+            title: error.Code,
+            detail: error.Description);
     }
 }
 

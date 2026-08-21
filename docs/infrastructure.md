@@ -26,6 +26,8 @@ Use environment variables in deployed environments. Do not store credentials in
 | `RabbitMq:Password` | `RabbitMq__Password` | RabbitMQ password |
 | `RabbitMq:VirtualHost` | `RabbitMq__VirtualHost` | Virtual host; defaults to `/` |
 | `RabbitMq:ExchangeName` | `RabbitMq__ExchangeName` | Topic exchange; defaults to `grd.integration` |
+| `RabbitMq:ConsumerMaxRetryAttempts` | `RabbitMq__ConsumerMaxRetryAttempts` | Total consumer processing attempts; defaults to `3` |
+| `RabbitMq:ConsumerRetryDelayMilliseconds` | `RabbitMq__ConsumerRetryDelayMilliseconds` | Base delay for exponential consumer retry; defaults to `500` ms |
 
 `IDbConnectionFactory` opens connections lazily. An API can therefore start without
 a database during early development, but its repository operation will fail with a
@@ -77,6 +79,18 @@ and idempotent Inbox patterns. No distributed database transaction is required.
 RabbitMQ delivery is at least once. A publisher crash between broker publication and
 the Outbox update can publish a duplicate; Inbox primary keys make consumer handling
 idempotent.
+
+RabbitMQ publisher-confirm tracking is enabled. The Outbox Publisher marks a row as
+processed only after the broker confirms the publish operation.
+
+Message processing is retried a bounded number of times with exponential delay. A
+terminal failure is published to `<exchange>.dead-letter` and routed to the durable
+`<queue>.dead-letter` queue. If that publication fails, the original delivery is
+requeued rather than discarded. Monitor every dead-letter queue and replay messages
+only after the underlying problem is corrected.
+
+For the implementation sequence and pattern decisions, see
+[event-driven-development.md](event-driven-development.md).
 
 ## Local workflow setup
 

@@ -1,23 +1,18 @@
-using GRD.SpChn.Contracts.IntegrationEvents;
 using GRD.SpChn.OrderManagement.Domain;
 
 namespace GRD.SpChn.OrderManagement.Application.Abstractions;
 
 public interface IOrderRepository
 {
-    Task AddAsync(
-        Order order,
-        OrderPlacedIntegrationEvent integrationEvent,
-        CancellationToken cancellationToken = default);
+    Task AddAsync(Order order, CancellationToken cancellationToken = default);
 
     Task<Order?> GetByIdAsync(
         Guid orderId,
         CancellationToken cancellationToken = default);
 
-    Task<bool> ApplyReservationResultAsync(
-        Guid eventId,
-        string eventType,
+    Task<Order?> GetByIdForUpdateAsync(
         Guid orderId,
-        OrderStatus status,
         CancellationToken cancellationToken = default);
+
+    Task UpdateAsync(Order order, CancellationToken cancellationToken = default);
 }

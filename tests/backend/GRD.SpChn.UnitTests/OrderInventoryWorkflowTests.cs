@@ -2,6 +2,7 @@ using FluentValidation;
 using GRD.SpChn.Inventory.Domain;
 using GRD.SpChn.OrderManagement.Application.Orders.CreateOrder;
 using GRD.SpChn.OrderManagement.Domain;
+using GRD.SpChn.SharedKernel;
 
 namespace GRD.SpChn.UnitTests;
 
@@ -63,5 +64,17 @@ public sealed class OrderInventoryWorkflowTests
         Assert.Contains(
             result.Errors,
             error => error.ErrorMessage.Contains("duplicate product ids"));
+    }
+
+    [Fact]
+    public void Result_exposes_expected_failure_without_throwing()
+    {
+        var result = Result<string>.Failure(Error.NotFound(
+            "Orders.NotFound",
+            "The order was not found."));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.NotFound, result.FirstError.Type);
+        Assert.Equal("Orders.NotFound", result.FirstError.Code);
     }
 }

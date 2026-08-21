@@ -3,6 +3,9 @@ using GRD.SpChn.Contracts.IntegrationEvents;
 using GRD.SpChn.OrderManagement.Application.Abstractions;
 using GRD.SpChn.OrderManagement.Application.IntegrationEvents;
 using GRD.SpChn.Persistence.MySql;
+using GRD.SpChn.OrderManagement.Infrastructure.Inbox;
+using GRD.SpChn.OrderManagement.Infrastructure.Outbox;
+using GRD.SpChn.OrderManagement.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,7 +19,12 @@ public static class DependencyInjection
     {
         services.AddMySqlPersistence(configuration);
         services.AddRabbitMqEventBus(configuration);
+        services.AddScoped<OrderUnitOfWork>();
+        services.AddScoped<IUnitOfWork>(provider =>
+            provider.GetRequiredService<OrderUnitOfWork>());
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IOutboxWriter, OrderOutboxWriter>();
+        services.AddScoped<IInboxStore, OrderInboxStore>();
         services.AddRabbitMqConsumer<
             StockReservedIntegrationEvent,
             StockReservedIntegrationEventHandler>(

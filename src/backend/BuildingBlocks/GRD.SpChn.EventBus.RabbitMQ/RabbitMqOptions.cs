@@ -11,4 +11,6 @@ public sealed class RabbitMqOptions
     public string VirtualHost { get; init; } = "/";
     public string ExchangeName { get; init; } = "grd.integration";
     public string ClientProvidedName { get; init; } = "grd-service";
+    public int ConsumerMaxRetryAttempts { get; init; } = 3;
+    public int ConsumerRetryDelayMilliseconds { get; init; } = 500;
 }

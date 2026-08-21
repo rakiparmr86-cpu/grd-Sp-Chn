@@ -1,5 +1,6 @@
+using GRD.SpChn.SharedKernel;
 using MediatR;
 
 namespace GRD.SpChn.OrderManagement.Application.Orders.GetOrder;
 
-public sealed record GetOrderQuery(Guid OrderId) : IRequest<OrderResponse?>;
+public sealed record GetOrderQuery(Guid OrderId) : IRequest<Result<OrderResponse>>;
