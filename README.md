@@ -44,6 +44,10 @@ docker compose --env-file deploy\docker\.env `
   -f deploy\docker\compose.infrastructure.yml up -d
 ```
 
+If another project already uses MySQL port `3306`, set `MYSQL_PORT=3308` in
+`deploy/docker/.env`. Then use `Port=3308` in every workflow connection string below.
+This changes only the host port; MySQL still listens on `3306` inside its container.
+
 For a fresh MySQL volume, Docker automatically executes:
 
 ```text
@@ -172,6 +176,28 @@ Invoke-RestMethod -Uri "http://localhost:7000/orders/$($order.id)"
 
 - `Confirmed`: Inventory reserved every requested item.
 - `Cancelled`: At least one product was missing or had insufficient stock.
+
+## 9. Run the complete workflow smoke test
+
+After Gateway, Order Management, Inventory, and Outbox Publisher are running, execute:
+
+```powershell
+pwsh -NoProfile -File scripts\smoke-order-inventory-workflow.ps1
+```
+
+The script sends every request through the Gateway. It verifies both branches:
+
+1. Stock is set to `10`, an order requests `2`, and the order becomes `Confirmed`.
+2. Another order requests `1000`, reservation fails, and the order becomes `Cancelled`.
+3. Final stock remains `8`, proving the failed reservation made no partial change.
+
+Use a different Gateway address or timeout when needed:
+
+```powershell
+pwsh -NoProfile -File scripts\smoke-order-inventory-workflow.ps1 `
+  -GatewayUrl http://localhost:7000 `
+  -TimeoutSeconds 60
+```
 
 ## Exchanges and queues
 

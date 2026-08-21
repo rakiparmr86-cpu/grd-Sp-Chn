@@ -108,6 +108,7 @@ Use this table when tracing the workflow in the debugger.
 | Final Order step | [`OrderProcessManager.cs`](../src/backend/Services/OrderManagement/GRD.SpChn.OrderManagement.Application/Orders/OrderProcessManager.cs) | Deduplicates the result and confirms or cancels the Order aggregate. |
 | Shared contracts | [`IntegrationEvents`](../src/backend/BuildingBlocks/GRD.SpChn.Contracts/IntegrationEvents) | Contains events and RabbitMQ topology names shared between publishers and consumers. |
 | MySQL schema | [`001_order_inventory_workflow.sql`](../deploy/docker/mysql/init/001_order_inventory_workflow.sql) | Creates Order, Inventory, Inbox, and Outbox tables. |
+| End-to-end smoke test | [`smoke-order-inventory-workflow.ps1`](../scripts/smoke-order-inventory-workflow.ps1) | Proves both `Confirmed` and `Cancelled` branches through the public Gateway. |
 
 ## Domain event versus integration event
 
