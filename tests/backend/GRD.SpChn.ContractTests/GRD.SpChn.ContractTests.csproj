@@ -18,4 +18,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\backend\BuildingBlocks\GRD.SpChn.Contracts\GRD.SpChn.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>

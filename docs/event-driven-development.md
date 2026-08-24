@@ -158,6 +158,130 @@ as payment, inventory, shipment, timeout, and compensation. At that point the Sa
 must persist its state, consumed message ids, current step, deadlines, and
 compensating actions.
 
+## Communication rules
+
+### Quick decision guide
+
+Use this decision sequence before adding an API client, Domain event, or Integration
+event:
+
+```text
+Does the caller need an authoritative answer now to continue?
+  yes
+    -> Same service: use an Application query/domain call.
+    -> Another service: use HTTP only with an approved synchronous dependency.
+       Do not hold a database transaction while making the call.
+
+  no
+    -> Has a meaningful business fact occurred and committed?
+         -> Only this service cares: use a Domain event or direct in-process call.
+         -> Another service has a real reaction: use an Integration event + Outbox.
+         -> Nobody has an identified reaction: create no event.
+```
+
+### Use HTTP when the answer is required now
+
+HTTP is appropriate when the current caller cannot proceed without a response and
+there is no meaningful eventual answer. Examples include an authoritative price
+calculation for a screen or an availability lookup used to help a user decide what
+to order.
+
+A synchronous service-to-service call creates runtime availability and latency
+coupling. Before adding one, document:
+
+- why a local projection or asynchronous fact cannot meet the requirement;
+- request/response ownership and compatibility;
+- connect, per-attempt, and total timeouts;
+- retry rules only for safe/idempotent operations;
+- circuit breaker and degraded behavior;
+- authentication/authorization and trace propagation;
+- behavior when the called service is unavailable.
+
+Never call another service while holding a local database transaction. A price or
+availability lookup also does not guarantee a later stock reservation: another order
+may change stock between the read and write. Inventory remains the authority for the
+atomic reservation decision.
+
+### Use RabbitMQ when another service reacts later
+
+Publish an Integration event when the source-of-truth service has changed its own
+state, another bounded context has an identified business reaction, and that reaction
+does not need to finish the current request.
+
+The producer writes the business change and Outbox intent in one local transaction.
+The consumer uses Inbox deduplication and its own local transaction. Integration
+events are past-tense facts, not instructions that expose the producer's workflow.
+
+Current examples:
+
+| Fact | Producer | Consumer reaction | Why asynchronous? |
+| --- | --- | --- | --- |
+| `OrderPlacedIntegrationEvent` | Order Management | Inventory attempts reservation. | `POST /orders` can safely return `202 Pending`; reservation can finish later. |
+| `StockReservedIntegrationEvent` | Inventory | Order Management confirms the Order. | Inventory has already committed the reservation. |
+| `StockReservationFailedIntegrationEvent` | Inventory | Order Management cancels the Order. | Rejection is a committed Inventory business outcome, not an HTTP failure. |
+
+### Use a Domain event only inside the owning service
+
+A Domain event represents a fact important inside one Domain/service boundary. It is
+free to use internal Domain types and may trigger another local handler. It is not a
+public RabbitMQ contract.
+
+In the current flow, `Order.Create` raises `OrderCreatedDomainEvent`. The Application
+handler maps that internal fact to the separately defined
+`OrderPlacedIntegrationEvent` because Inventory has a real reaction. The Domain event
+itself is never serialized or published.
+
+Do not add a Domain event when a direct aggregate method or one local handler is
+clearer. Events are a modeling tool, not a requirement for every method call.
+
+### Do not create an event for these cases
+
+| Proposed need | Correct choice | Reason |
+| --- | --- | --- |
+| Display current order status | `GetOrderQuery` over HTTP | It is a read concern; the caller wants current data. |
+| Display current stock | `GetStockQuery` over HTTP | Publishing an event merely to answer a read adds delay and stale state. |
+| Notify nobody that an internal cache flag changed | No event | No business consumer or reaction exists. |
+| Publish every Order column update | No generic field-change events | Persistence details are not stable business facts. |
+| Tell another service to update this service's database | Redesign ownership | A service changes only its own state. |
+| Coordinate two capabilities that always deploy and change together | Reconsider the service split | Messaging cannot repair a false bounded-context boundary. |
+| Add an event for a possible future consumer | No event yet | Add the contract when a concrete consumer, reaction, and compatibility owner exist. |
+
+### Required event proposal
+
+Before adding an Integration-event class or topology constant, record in the pull
+request or an ADR:
+
+1. The past-tense business fact and the aggregate/service that owns it.
+2. At least one named consuming service and its business reaction.
+3. Why eventual consistency is acceptable and what the user observes meanwhile.
+4. The minimal contract fields the consumer actually requires.
+5. Producer and consumer owners plus compatibility/versioning expectations.
+6. Outbox, Inbox/idempotency, retry, dead-letter, replay, retention, and observability
+   behavior.
+
+If these answers are unavailable, do not add the event. The explicit goal is to
+avoid turning every internal state change into an Integration event "just in case."
+
+### Current Integration-event audit
+
+The implemented Order/Inventory slice currently has three approved, routed events:
+
+- `OrderPlacedIntegrationEvent`;
+- `StockReservedIntegrationEvent`;
+- `StockReservationFailedIntegrationEvent`.
+
+The Contracts project also contains older scaffolded event types for future Delivery,
+Goods Receipt, Procurement, Sales Order, Shipment, and broader Inventory workflows.
+No publisher, topology constant, or consumer for those types is part of the current
+vertical slice. Treat them as **unverified contract candidates**, not as permission
+to publish them.
+
+Before implementing any candidate, complete the required event proposal above and
+either approve its current shape or replace it before publication. Do not delete or
+rename an existing public contract solely because repository search shows no local
+consumer: first verify that no independently deployed or external consumer uses it,
+because removal would be a breaking contract change.
+
 ## Dependency rule
 
 Dependencies point inward:

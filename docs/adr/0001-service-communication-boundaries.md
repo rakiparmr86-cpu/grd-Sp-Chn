@@ -22,6 +22,19 @@ Inventory --StockReserved | StockReservationFailed--> Order Management
 
 ## Decision
 
+### Communication selection rule
+
+Choose the mechanism from the business requirement, not from a preference for HTTP
+or messaging:
+
+| Question | Mechanism | Required meaning |
+| --- | --- | --- |
+| Does the caller require an authoritative answer now to continue? | HTTP query/API | A synchronous response is part of the current use case. |
+| Has this service committed a business fact that another service can react to later? | RabbitMQ integration event | The producer is announcing a past-tense fact and accepts eventual consistency. |
+| Does the fact matter only inside the current service or aggregate boundary? | Domain event or direct in-process call | The detail remains private and can change with the service implementation. |
+| Is the information only needed for a read screen/report? | HTTP query or read model | No business event is introduced merely to transport read data. |
+| Is there no identified consumer or business reaction? | No event | Do not publish speculative contracts "just in case." |
+
 ### Client communication
 
 1. External clients call the YARP API Gateway.
@@ -44,6 +57,36 @@ Inventory --StockReserved | StockReservationFailed--> Order Management
 5. A consumer must not call back into the producer to complete the same local
    transaction.
 
+### Domain events
+
+1. A Domain event belongs to the service that owns the aggregate and is not a
+   cross-service contract.
+2. It may trigger another in-process handler in the same service when that keeps the
+   aggregate/use case cohesive.
+3. It must not be serialized directly to RabbitMQ. The Application layer explicitly
+   maps an approved Domain fact to an Integration event.
+4. If only one local handler needs the information and a direct method call is
+   clearer, no Domain event is required.
+
+### When not to create an integration event
+
+Do not create or publish an event when:
+
+- the need is a pure read that belongs in an API query or read model;
+- no concrete consuming service and business reaction have been identified;
+- the payload exposes a field-level persistence change rather than a meaningful
+  business fact;
+- the fact is an internal implementation detail of one service;
+- eventual consistency is unacceptable to the consuming use case;
+- the proposed publisher and consumer are so tightly coupled that the service
+  boundary itself should be reconsidered;
+- messaging is being used to hide an unclear ownership boundary.
+
+An integration event is not created for every aggregate property update. Publishing
+events "just in case" creates contract, deployment, replay, Inbox, observability, and
+operational obligations without delivering a business capability. That is a
+distributed monolith smell, not loose coupling.
+
 ### Synchronous service HTTP exception
 
 Direct service-to-service HTTP is allowed only when an immediate response is a real
@@ -59,6 +102,12 @@ requires a new ADR or an amendment that defines:
 - tracing and operational ownership.
 
 A synchronous call must not be made while holding a database transaction open.
+
+An HTTP availability/price lookup can inform an immediate user decision, but it does
+not reserve inventory. If the workflow needs an authoritative reservation, the
+owning Inventory service must still protect that state change against concurrency.
+The caller must also define what happens when the lookup service is slow or
+unavailable.
 
 ### Message metadata
 
@@ -106,3 +155,8 @@ contracts and technical building blocks may be shared.
 - Integration contracts live under `GRD.SpChn.Contracts`.
 - RabbitMQ implementations stay behind `GRD.SpChn.EventBus.Abstractions`.
 - Any new direct service HTTP call requires architecture review.
+- Every proposed integration event identifies its producer, at least one real
+  consumer, the consumer's reaction, consistency expectation, owner, and retention/
+  replay impact before the contract is added.
+- Contract tests enforce the structural event envelope and naming convention.
+- Code review rejects speculative, field-level, or consumer-less events.

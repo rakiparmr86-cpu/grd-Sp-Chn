@@ -39,6 +39,14 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
+    public void Application_projects_do_not_reference_rabbitmq_implementation()
+    {
+        AssertReferencesDoNotContain(
+            GetServiceProjects("*.Application.csproj"),
+            ".EventBus.RabbitMQ");
+    }
+
+    [Fact]
     public void Infrastructure_projects_do_not_reference_api_projects()
     {
         AssertReferencesDoNotContain(
@@ -82,6 +90,32 @@ public sealed class LayerDependencyTests
                     $"an integration contract, not project reference '{referencedProject}'.");
             }
         }
+    }
+
+    [Fact]
+    public void Api_gateway_routes_to_services_without_project_references()
+    {
+        var root = FindRepositoryRoot();
+        var gatewayProject = Path.Combine(
+            root,
+            "src",
+            "backend",
+            "ApiGateway",
+            "GRD.SpChn.ApiGateway",
+            "GRD.SpChn.ApiGateway.csproj");
+        var document = XDocument.Load(gatewayProject);
+        var projectReferences = document
+            .Descendants()
+            .Where(element => element.Name.LocalName == "ProjectReference")
+            .Select(element => element.Attribute("Include")?.Value ?? string.Empty)
+            .ToArray();
+
+        Assert.DoesNotContain(
+            projectReferences,
+            reference => reference.Contains(
+                $"Services{Path.DirectorySeparatorChar}",
+                StringComparison.OrdinalIgnoreCase) ||
+                reference.Contains("Services/", StringComparison.OrdinalIgnoreCase));
     }
 
     private static void AssertReferencesDoNotContain(
