@@ -4,6 +4,14 @@ GRD Supply Chain is a .NET 10 microservice solution. The implemented order workf
 uses MySQL local transactions, transactional Outbox/Inbox messaging, RabbitMQ, and a
 YARP API Gateway.
 
+Architecture-wide decisions are recorded in the
+[Phase 0 ADR index](docs/adr/README.md). Review and accept the proposed ADRs before
+using them as signed-off policy for additional service development.
+
+The Application-layer command/query design, isolated test boundary, and realistic
+warehouse-user-to-order-user scenarios are documented in
+[Phase 4 - Commands and Queries](docs/development-phases/phase-4-commands-queries.md).
+
 ## Order workflow
 
 ```text

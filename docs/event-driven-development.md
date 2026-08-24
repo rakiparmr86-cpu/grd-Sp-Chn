@@ -4,6 +4,10 @@ This document is the implementation standard for event-driven workflows in GRD
 Supply Chain. It applies first to the Order Management and Inventory workflow and
 should be followed when adding another service or use case.
 
+The authoritative Phase 0 decisions are indexed in the
+[Phase 0 ADR index](adr/README.md). The ADRs are currently `Proposed`; this guide
+describes their intended implementation but does not replace stakeholder approval.
+
 ## Start here: the architecture in plain language
 
 The main goal is to let each service own its data and continue working independently.
@@ -100,7 +104,8 @@ Use this table when tracing the workflow in the debugger.
 | Publisher worker | [`OutboxPublisher/Worker.cs`](../src/backend/Workers/GRD.SpChn.OutboxPublisher/Worker.cs) | Polls Outbox tables, publishes rows, and marks successful rows processed. |
 | RabbitMQ adapter | [`RabbitMqEventBus.cs`](../src/backend/BuildingBlocks/GRD.SpChn.EventBus.RabbitMQ/RabbitMqEventBus.cs) | Hides RabbitMQ publishing behind `IEventBus` and enables publisher confirms. |
 | RabbitMQ consumer host | [`RabbitMqConsumerHostedService.cs`](../src/backend/BuildingBlocks/GRD.SpChn.EventBus.RabbitMQ/RabbitMqConsumerHostedService.cs) | Declares topology, deserializes, retries, acknowledges, and dead-letters messages. |
-| Inventory event handler | [`OrderPlacedIntegrationEventHandler.cs`](../src/backend/Services/Inventory/GRD.SpChn.Inventory.Application/IntegrationEvents/OrderPlacedIntegrationEventHandler.cs) | Deduplicates `OrderPlaced`, attempts reservation, and records the result event. |
+| Inventory event adapter | [`OrderPlacedIntegrationEventHandler.cs`](../src/backend/Services/Inventory/GRD.SpChn.Inventory.Application/IntegrationEvents/OrderPlacedIntegrationEventHandler.cs) | Maps `OrderPlaced` contract data to the internal `ReserveStockCommand`; contains no reservation logic. |
+| Inventory reservation command | [`ReserveStock`](../src/backend/Services/Inventory/GRD.SpChn.Inventory.Application/Stock/ReserveStock) | Deduplicates `OrderPlaced`, performs the all-or-nothing reservation, and records the result event through Application ports. |
 | Inventory transaction | [`InventoryUnitOfWork.cs`](../src/backend/Services/Inventory/GRD.SpChn.Inventory.Infrastructure/Persistence/InventoryUnitOfWork.cs) | Commits Inventory Inbox, stock changes, and Inventory Outbox together. |
 | Inventory rules | [`StockItem.cs`](../src/backend/Services/Inventory/GRD.SpChn.Inventory.Domain/StockItem.cs) | Decides whether stock can be reserved and prevents negative quantity. |
 | Inventory Inbox | [`InventoryInboxStore.cs`](../src/backend/Services/Inventory/GRD.SpChn.Inventory.Infrastructure/Inbox/InventoryInboxStore.cs) | Rejects an already processed integration-event id. |
@@ -211,7 +216,9 @@ OutboxPublisher
   -> routing key: order.placed
   -> queue: inventory.order-placed
   -> RabbitMqConsumerHostedService deserializes the contract
-  -> OrderPlacedIntegrationEventHandler opens Inventory Unit of Work
+  -> OrderPlacedIntegrationEventHandler maps the event to ReserveStockCommand
+  -> MediatR TransactionBehavior opens Inventory Unit of Work
+  -> ReserveStockCommandHandler orchestrates the reservation
   -> IInboxStore INSERT IGNORE by EventId
        duplicate -> commit/ack without applying stock again
        new       -> continue

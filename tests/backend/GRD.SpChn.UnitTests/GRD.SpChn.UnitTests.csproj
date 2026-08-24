@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\..\src\backend\BuildingBlocks\GRD.SpChn.EventBus.Abstractions\GRD.SpChn.EventBus.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\src\backend\BuildingBlocks\GRD.SpChn.EventBus.RabbitMQ\GRD.SpChn.EventBus.RabbitMQ.csproj" />
     <ProjectReference Include="..\..\..\src\backend\BuildingBlocks\GRD.SpChn.Persistence.MySql\GRD.SpChn.Persistence.MySql.csproj" />
+    <ProjectReference Include="..\..\..\src\backend\Services\Inventory\GRD.SpChn.Inventory.Application\GRD.SpChn.Inventory.Application.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Services\Inventory\GRD.SpChn.Inventory.Domain\GRD.SpChn.Inventory.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Services\OrderManagement\GRD.SpChn.OrderManagement.Application\GRD.SpChn.OrderManagement.Application.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Services\OrderManagement\GRD.SpChn.OrderManagement.Domain\GRD.SpChn.OrderManagement.Domain.csproj" />
