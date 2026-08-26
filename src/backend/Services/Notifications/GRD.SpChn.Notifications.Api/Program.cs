@@ -18,6 +18,7 @@ app.UseServiceDefaults();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseDarkSwaggerUi();
 }
 
 app.UseAuthorization();

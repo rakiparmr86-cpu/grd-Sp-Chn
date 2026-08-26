@@ -4,6 +4,11 @@ GRD Supply Chain is a .NET 10 microservice solution. The implemented order workf
 uses MySQL local transactions, transactional Outbox/Inbox messaging, RabbitMQ, and a
 YARP API Gateway.
 
+For a complete inventory of all 13 service boundaries, 17 .NET executable
+processes, implementation status, responsibilities, project layers, technologies,
+known gaps, and the full request/event flow, see
+[GRD Supply Chain system overview](docs/system-overview.md).
+
 Architecture-wide decisions are recorded in the
 [Phase 0 ADR index](docs/adr/README.md). Review and accept the proposed ADRs before
 using them as signed-off policy for additional service development.
@@ -11,6 +16,10 @@ using them as signed-off policy for additional service development.
 The Application-layer command/query design, isolated test boundary, and realistic
 warehouse-user-to-order-user scenarios are documented in
 [Phase 4 - Commands and Queries](docs/development-phases/phase-4-commands-queries.md).
+
+The shared message shapes, package/wire versioning rules, and backward-compatibility
+tests are documented in
+[Phase 6 - Integration Event Contracts](docs/development-phases/phase-6-integration-event-contracts.md).
 
 ## Order workflow
 
@@ -36,6 +45,24 @@ Run all commands below from the repository root:
 ```powershell
 Set-Location D:\newdata\grd-Sp-Chn
 ```
+
+### Start all enabled services with one command
+
+For normal VS Code development, use **Terminal -> Run Task -> GRD: Start enabled
+services**. The task builds enabled projects sequentially, then opens every process
+in a dedicated VS Code terminal.
+
+To enable or disable a service, change its `Enabled` value in
+[`scripts/start-local-services.ps1`](scripts/start-local-services.ps1). You can also
+launch the same registry in separate PowerShell consoles:
+
+```powershell
+pwsh -NoProfile -File scripts\start-local-services.ps1
+```
+
+For the complete commands, port table, environment overrides, and explanation of
+Windows executable locks, see
+[`docs/local-service-runner.md`](docs/local-service-runner.md).
 
 ## 1. Start MySQL and RabbitMQ
 
@@ -79,6 +106,13 @@ dotnet run --project `
 ```
 
 Gateway address: `http://localhost:7000`
+
+Development API documentation is available at `http://localhost:7000/swagger`.
+The dark Swagger UI includes a selector for every service; the selected service must
+be running for its OpenAPI document and interactive requests to work. Gateway
+Swagger rewrites "Try it out" requests through the service's public YARP route.
+In Development, opening an API's base address redirects to its Swagger UI; for
+example, `http://localhost:7001` redirects to `/swagger/index.html`.
 
 ## 3. Start Order Management
 

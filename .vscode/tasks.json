@@ -1,0 +1,232 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "GRD: Prepare enabled services",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}\\scripts\\start-local-services.ps1",
+        "-BuildOnly"
+      ],
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "GRD: ApiGateway",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "ApiGateway", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Identity",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Identity", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Notifications",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Notifications", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: OrderManagement",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "OrderManagement", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Inventory",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Inventory", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Delivery",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Delivery", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Organization",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Organization", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Procurement",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Procurement", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: ProductCatalog",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "ProductCatalog", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Reporting",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Reporting", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Shipment",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Shipment", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Supplier",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Supplier", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Transportation",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Transportation", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Warehouse",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Warehouse", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: OutboxPublisher",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "OutboxPublisher", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: EventProcessor",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "EventProcessor", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: ProjectionBuilder",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "ProjectionBuilder", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Launch enabled services",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "GRD: ApiGateway",
+        "GRD: Identity",
+        "GRD: Notifications",
+        "GRD: OrderManagement",
+        "GRD: Inventory",
+        "GRD: Delivery",
+        "GRD: Organization",
+        "GRD: Procurement",
+        "GRD: ProductCatalog",
+        "GRD: Reporting",
+        "GRD: Shipment",
+        "GRD: Supplier",
+        "GRD: Transportation",
+        "GRD: Warehouse",
+        "GRD: OutboxPublisher",
+        "GRD: EventProcessor",
+        "GRD: ProjectionBuilder"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "GRD: Start enabled services",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "GRD: Prepare enabled services",
+        "GRD: Launch enabled services"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

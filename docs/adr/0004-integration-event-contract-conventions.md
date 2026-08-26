@@ -34,15 +34,16 @@ integration contracts.
 
 Every integration event contains:
 
+- positive integer `SchemaVersion` (serialized as `schemaVersion`);
 - globally unique `EventId`;
 - `OccurredOnUtc` stored and serialized as UTC;
 - stable business identifiers needed by consumers;
 - only the minimum business data needed to process the fact.
 
-Correlation id, causation id, producer name, schema version, and trace context should
-be added to a shared message envelope before additional production workflows are
-introduced. Sensitive data and credentials must not be included unless explicitly
-approved and protected.
+Correlation id, causation id, producer name, and trace context should be added to a
+shared message envelope before additional production workflows are introduced.
+Sensitive data and credentials must not be included unless explicitly approved and
+protected.
 
 ### Domain-to-integration mapping
 
@@ -52,7 +53,8 @@ RabbitMQ.
 
 ### Versioning
 
-1. The existing unversioned event and routing key are treated as version 1.
+1. The existing unversioned CLR type and routing key are version 1; their JSON payload
+   contains `"schemaVersion": 1`.
 2. Backward-compatible additive changes may keep the same version when new fields are
    optional or have safe defaults for older consumers.
 3. Removing/renaming a field, changing its type, changing meaning, or changing a
@@ -63,6 +65,30 @@ RabbitMQ.
 6. The old version is removed only after consumer ownership is known, usage is zero,
    retention/replay requirements are satisfied, and deprecation is documented.
 7. Reusing an old event name with new semantics is prohibited.
+
+The NuGet package version and wire schema version solve different problems:
+
+- `GRD.SpChn.Contracts` uses Semantic Versioning for package releases. Breaking
+  public API changes require a package major-version increase.
+- `SchemaVersion` identifies the JSON message schema carried through RabbitMQ.
+- A package can receive several patch/minor releases without changing an event's
+  `SchemaVersion`.
+- A breaking event schema introduces a new CLR contract/routing key and increments
+  its wire version even if old and new contracts ship in the same package.
+
+Missing `schemaVersion` is interpreted as version 1 so messages stored before the
+field was introduced remain readable. Unknown additive JSON fields are ignored by v1
+consumers.
+
+### Contract package distribution
+
+`GRD.SpChn.Contracts` is packable as NuGet package `GRD.SpChn.Contracts`, initially
+versioned `1.0.0`. Projects in this monorepo use a `ProjectReference` so local edits
+compile together. Independently deployed repositories must consume an exact or
+centrally managed `PackageReference` from the approved internal package feed.
+
+Publishing a package is a release/CI responsibility. Do not overwrite an existing
+package version; produce a new immutable version and promote it through environments.
 
 ### Compatibility ownership
 
