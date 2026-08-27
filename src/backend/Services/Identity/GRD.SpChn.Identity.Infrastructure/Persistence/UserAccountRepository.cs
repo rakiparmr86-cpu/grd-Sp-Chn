@@ -53,7 +53,7 @@ internal sealed class UserAccountRepository(IDbConnectionFactory connectionFacto
                 row.Role,
                 row.AccessProfileCode,
                 row.OrganizationUnitId,
-                row.IsActive,
+                row.IsActive != 0,
                 permissions);
     }
 
@@ -109,5 +109,5 @@ internal sealed class UserAccountRepository(IDbConnectionFactory connectionFacto
         string Role,
         string AccessProfileCode,
         Guid OrganizationUnitId,
-        bool IsActive);
+        long IsActive);
 }
