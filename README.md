@@ -4,8 +4,14 @@ GRD Supply Chain is a .NET 10 microservice solution. The implemented order workf
 uses MySQL local transactions, transactional Outbox/Inbox messaging, RabbitMQ, and a
 YARP API Gateway.
 
+The first ERP procurement slice now supports authenticated Store Material Request,
+approval, supplier Purchase Order, production-location Goods Receipt, and
+location-specific Inventory. See
+[ERP Store Request to Material Receipt](docs/erp-procure-to-receive.md) for module
+ownership, roles, API steps, events, setup and current limitations.
+
 For a complete inventory of all 13 service boundaries, 17 .NET executable
-processes, implementation status, responsibilities, project layers, technologies,
+processes, the React web process, implementation status, responsibilities, project layers, technologies,
 known gaps, and the full request/event flow, see
 [GRD Supply Chain system overview](docs/system-overview.md).
 
@@ -37,6 +43,7 @@ POST /orders
 ## Prerequisites
 
 - .NET SDK 10
+- Node.js 20 or later and npm
 - Docker Desktop with Docker Compose
 - PowerShell
 
@@ -45,6 +52,10 @@ Run all commands below from the repository root:
 ```powershell
 Set-Location D:\newdata\grd-Sp-Chn
 ```
+
+The React login/dashboard and HR user-management flow are documented in
+[`docs/frontend-authentication.md`](docs/frontend-authentication.md). Install its
+packages once with `npm install` in `src/frontend/grd-spchn-web`.
 
 ### Start all enabled services with one command
 
@@ -87,12 +98,21 @@ For a fresh MySQL volume, Docker automatically executes:
 
 ```text
 deploy/docker/mysql/init/001_order_inventory_workflow.sql
+deploy/docker/mysql/init/002_erp_procure_to_receive.sql
+deploy/docker/mysql/init/003_identity_user_management.sql
+deploy/docker/mysql/init/004_identity_access_profiles.sql
 ```
 
 MySQL initialization scripts run only when the data volume is first created. If the
 `grd-spchn_mysql-data` volume already exists, apply the SQL file to `grd_local`
 manually using your MySQL client. Do not delete an existing volume unless its data is
 no longer required.
+
+To apply only the new local HR account and demo password to an existing volume:
+
+```powershell
+pwsh -NoProfile -File scripts\apply-local-identity-seed.ps1
+```
 
 RabbitMQ management is available at `http://localhost:15672`.
 
@@ -113,6 +133,23 @@ be running for its OpenAPI document and interactive requests to work. Gateway
 Swagger rewrites "Try it out" requests through the service's public YARP route.
 In Development, opening an API's base address redirects to its Swagger UI; for
 example, `http://localhost:7001` redirects to `/swagger/index.html`.
+
+### Call services through the Gateway
+
+Client applications use the Gateway on port `7000`; they do not call service ports
+directly. YARP removes the public service prefix before forwarding the remaining
+path to the owning service:
+
+| Client request | Forwarded destination |
+| --- | --- |
+| `GET http://localhost:7000/api/identity/health` | Identity `GET http://localhost:7001/health` |
+| `GET http://localhost:7000/api/notifications/health` | Notifications `GET http://localhost:7002/health` |
+| `GET http://localhost:7000/api/identity/health/ready` | Identity readiness endpoint |
+| `GET http://localhost:7000/api/notifications/health/live` | Notifications liveness endpoint |
+
+Use Gateway HTTP routes for client-to-service requests. Services normally react to
+cross-service state changes through RabbitMQ Integration Events; they should not
+route asynchronous service-to-service messaging back through the public Gateway.
 
 ## 3. Start Order Management
 

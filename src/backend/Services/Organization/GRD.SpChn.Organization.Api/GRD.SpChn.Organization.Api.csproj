@@ -16,6 +16,7 @@
     <ProjectReference Include="..\GRD.SpChn.Organization.Application\GRD.SpChn.Organization.Application.csproj" />
     <ProjectReference Include="..\GRD.SpChn.Organization.Infrastructure\GRD.SpChn.Organization.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Observability\GRD.SpChn.Observability.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Security\GRD.SpChn.Security.csproj" />
   </ItemGroup>
 
 </Project>

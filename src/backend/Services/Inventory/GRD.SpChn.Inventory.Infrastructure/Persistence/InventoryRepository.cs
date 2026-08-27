@@ -7,8 +7,48 @@ namespace GRD.SpChn.Inventory.Infrastructure.Persistence;
 
 internal sealed class InventoryRepository(
     IDbConnectionFactory connectionFactory,
-    InventoryUnitOfWork unitOfWork) : IInventoryRepository
+    InventoryUnitOfWork unitOfWork) : IInventoryRepository, ILocationInventoryRepository
 {
+    public async Task<decimal?> GetOnHandQuantityAsync(
+        Guid organizationUnitId,
+        Guid productId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        return await connection.QuerySingleOrDefaultAsync<decimal?>(new CommandDefinition(
+            """
+            SELECT on_hand_quantity
+            FROM inventory_location_stock
+            WHERE organization_unit_id = @OrganizationUnitId
+              AND product_id = @ProductId;
+            """,
+            new { OrganizationUnitId = organizationUnitId, ProductId = productId },
+            cancellationToken: cancellationToken));
+    }
+
+    public Task ReceiveAsync(
+        LocationStockReceipt receipt,
+        CancellationToken cancellationToken = default) =>
+        unitOfWork.Connection.ExecuteAsync(new CommandDefinition(
+            """
+            INSERT INTO inventory_location_stock
+                (organization_unit_id, product_id, on_hand_quantity, updated_on_utc)
+            VALUES
+                (@OrganizationUnitId, @ProductId, @Quantity, @UpdatedOnUtc)
+            ON DUPLICATE KEY UPDATE
+                on_hand_quantity = on_hand_quantity + VALUES(on_hand_quantity),
+                updated_on_utc = VALUES(updated_on_utc);
+            """,
+            new
+            {
+                receipt.OrganizationUnitId,
+                receipt.ProductId,
+                receipt.Quantity,
+                UpdatedOnUtc = DateTime.UtcNow
+            },
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken));
+
     public Task UpsertAsync(
         StockItem stock,
         CancellationToken cancellationToken = default) =>

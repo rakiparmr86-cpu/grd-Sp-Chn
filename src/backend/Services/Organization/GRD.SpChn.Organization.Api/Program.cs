@@ -1,6 +1,7 @@
 using GRD.SpChn.Organization.Application;
 using GRD.SpChn.Organization.Infrastructure;
 using GRD.SpChn.Observability;
+using GRD.SpChn.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,7 +10,7 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddAuthorization();
+builder.Services.AddErpAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
@@ -21,6 +22,7 @@ if (app.Environment.IsDevelopment())
     app.UseDarkSwaggerUi();
 }
 
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapServiceDefaultEndpoints();

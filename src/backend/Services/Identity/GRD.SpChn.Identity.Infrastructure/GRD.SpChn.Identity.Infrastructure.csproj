@@ -6,6 +6,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.EventBus.RabbitMQ\GRD.SpChn.EventBus.RabbitMQ.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Observability\GRD.SpChn.Observability.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Persistence.MySql\GRD.SpChn.Persistence.MySql.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Security\GRD.SpChn.Security.csproj" />
   </ItemGroup>
 
   <ItemGroup>

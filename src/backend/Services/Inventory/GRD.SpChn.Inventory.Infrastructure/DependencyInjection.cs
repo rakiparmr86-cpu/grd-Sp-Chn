@@ -23,6 +23,8 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(provider =>
             provider.GetRequiredService<InventoryUnitOfWork>());
         services.AddScoped<IInventoryRepository, InventoryRepository>();
+        services.AddScoped<ILocationInventoryRepository>(provider =>
+            (InventoryRepository)provider.GetRequiredService<IInventoryRepository>());
         services.AddScoped<IOutboxWriter, InventoryOutboxWriter>();
         services.AddScoped<IInboxStore, InventoryInboxStore>();
         services.AddRabbitMqConsumer<
@@ -31,6 +33,12 @@ public static class DependencyInjection
             MessagingTopology.OrderExchange,
             "inventory.order-placed",
             MessagingTopology.OrderPlacedRoutingKey);
+        services.AddRabbitMqConsumer<
+            GoodsReceiptPostedIntegrationEvent,
+            GoodsReceiptPostedIntegrationEventHandler>(
+            MessagingTopology.WarehouseExchange,
+            "inventory.goods-receipt-posted",
+            MessagingTopology.GoodsReceiptPostedRoutingKey);
 
         return services;
     }

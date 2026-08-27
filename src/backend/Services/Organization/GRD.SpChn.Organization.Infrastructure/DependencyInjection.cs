@@ -1,4 +1,6 @@
 using GRD.SpChn.EventBus.RabbitMQ;
+using GRD.SpChn.Organization.Application.Abstractions;
+using GRD.SpChn.Organization.Infrastructure.Persistence;
 using GRD.SpChn.Persistence.MySql;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +15,7 @@ public static class DependencyInjection
     {
         services.AddMySqlPersistence(configuration);
         services.AddRabbitMqEventBus(configuration);
+        services.AddScoped<IOrganizationUnitRepository, OrganizationUnitRepository>();
 
         return services;
     }

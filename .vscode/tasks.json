@@ -192,6 +192,16 @@
       "runOptions": { "instanceLimit": 1 }
     },
     {
+      "label": "GRD: Web",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Web", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
       "label": "GRD: Launch enabled services",
       "dependsOrder": "parallel",
       "dependsOn": [
@@ -211,7 +221,8 @@
         "GRD: Warehouse",
         "GRD: OutboxPublisher",
         "GRD: EventProcessor",
-        "GRD: ProjectionBuilder"
+        "GRD: ProjectionBuilder",
+        "GRD: Web"
       ],
       "problemMatcher": []
     },

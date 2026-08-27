@@ -226,6 +226,38 @@ public sealed class IntegrationEventContractTests
         Assert.Empty(forbiddenReferences);
     }
 
+    [Fact]
+    public void Procure_to_receive_contracts_round_trip_with_location_and_lines()
+    {
+        var productId = Guid.NewGuid();
+        var destinationId = Guid.NewGuid();
+        var issued = new PurchaseOrderIssuedIntegrationEvent(
+            Guid.NewGuid(),
+            "PO-001",
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            destinationId,
+            "INR",
+            [new PurchaseOrderIssuedItem(productId, 50, "KG", 120.50m)]);
+        var receipt = new GoodsReceiptPostedIntegrationEvent(
+            Guid.NewGuid(),
+            "GRN-001",
+            issued.PurchaseOrderId,
+            destinationId,
+            Guid.NewGuid(),
+            [new GoodsReceiptPostedItem(productId, 50, "KG")]);
+
+        var issuedCopy = RoundTrip(issued);
+        var receiptCopy = RoundTrip(receipt);
+
+        AssertEnvelopeEqual(issued, issuedCopy);
+        Assert.Equal(destinationId, issuedCopy.DestinationOrganizationUnitId);
+        Assert.Equal(120.50m, issuedCopy.Items.Single().UnitPrice);
+        AssertEnvelopeEqual(receipt, receiptCopy);
+        Assert.Equal(issued.PurchaseOrderId, receiptCopy.PurchaseOrderId);
+        Assert.Equal(50, receiptCopy.Items.Single().Quantity);
+    }
+
     private static T RoundTrip<T>(T integrationEvent)
         where T : IIntegrationEvent
     {

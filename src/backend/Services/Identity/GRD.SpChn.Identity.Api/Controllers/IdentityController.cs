@@ -3,15 +3,15 @@ using Microsoft.AspNetCore.Mvc;
 namespace GRD.SpChn.Identity.Api.Controllers;
 
 [ApiController]
-[Route("api/notifications")]
+[Route("health")]
 public class IdentityController : ControllerBase
 {
-    [HttpGet("identityhealth")]
+    [HttpGet]
     public IActionResult Health()
     {
         return Ok(new
         {
-            service = "Notifications",
+            service = "Identity",
             status = "Running"
         });
     }

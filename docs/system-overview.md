@@ -23,19 +23,21 @@ design rules, see [`event-driven-development.md`](event-driven-development.md).
 | Projects per service | 4 | Each service has `.Api`, `.Application`, `.Domain`, and `.Infrastructure`. |
 | Service projects | 52 | 13 services multiplied by four layers. |
 | API Gateway projects/processes | 1 | YARP public entry point. |
+| Frontend projects/processes | 1 | React/Vite login and permission-aware ERP dashboard. |
 | Worker projects/processes | 3 | Outbox Publisher, Event Processor, and Projection Builder. |
-| Shared building-block projects | 6 | Contracts, EventBus abstractions, RabbitMQ adapter, MySQL persistence, observability, and Shared Kernel. |
+| Shared building-block projects | 7 | Contracts, EventBus abstractions, RabbitMQ adapter, MySQL persistence, observability, JWT security, and Shared Kernel. |
 | Test projects | 4 | Unit, architecture, contract, and integration tests. |
-| Total `.csproj` files | 66 | Includes services, Gateway, workers, building blocks, and tests. |
+| Total `.csproj` files | 67 | Includes services, Gateway, workers, building blocks, and tests. |
 
 When every executable is enabled locally, the runtime consists of:
 
 ```text
-14 HTTP processes  = 1 API Gateway + 13 service APIs
+14 backend HTTP processes = 1 API Gateway + 13 service APIs
+ 1 frontend HTTP process = React/Vite web UI
  3 worker processes
  2 infrastructure containers = MySQL + RabbitMQ
 ---------------------------------------------------
-19 runtime processes/containers in the full local landscape
+20 runtime processes/containers in the full local landscape
 ```
 
 Building blocks, Domain, Application, Infrastructure, and test projects compile to
@@ -51,6 +53,12 @@ assemblies; they are not separate running processes.
 
 ## Executable process catalog
 
+### Frontend
+
+| Process | Port | Status | Responsibility |
+| --- | ---: | --- | --- |
+| `grd-spchn-web` | 5173 | **Partial** | React login, permission-aware ERP command center, and HR user creation. Calls backend services only through YARP. Procurement forms and operational read models remain. |
+
 ### API Gateway
 
 | Process | Port | Status | Responsibility |
@@ -64,17 +72,17 @@ The Gateway also exposes its own `/`, `/health/live`, and `/health/ready` endpoi
 | Service process | Port | Gateway path | Status | Current responsibility |
 | --- | ---: | --- | --- | --- |
 | `GRD.SpChn.OrderManagement.Api` | 5255 | `/orders/{**catch-all}` | **Implemented** | Accepts orders, returns `Pending`, exposes order-status queries, consumes Inventory reservation results, and confirms/cancels Orders. |
-| `GRD.SpChn.Inventory.Api` | 5018 | `/api/inventory/{**catch-all}` | **Implemented** | Sets/reads stock, consumes `OrderPlaced`, performs all-or-nothing reservation, and creates success/failure Outbox events. |
-| `GRD.SpChn.Identity.Api` | 7001 | `/api/identity/{**catch-all}` | **Partial** | Has common health endpoints and a placeholder controller. Authentication, users, tokens, roles, and authorization policies are not implemented. |
+| `GRD.SpChn.Inventory.Api` | 5018 | `/api/inventory/{**catch-all}` | **Implemented** | Handles the sales-order reservation flow and consumes Warehouse GRNs to maintain location/product stock. |
+| `GRD.SpChn.Identity.Api` | 7001 | `/api/identity/{**catch-all}` | **Partial** | Authenticates PBKDF2-backed users; resolves role and permissions from database-owned access-profile tables; issues organization/role/permission JWTs; and lets authorized HR Managers create operational users. Refresh, revocation, audit and production key management remain. |
 | `GRD.SpChn.Notifications.Api` | 7002 | `/api/notifications/{**catch-all}` | **Partial** | Has health/sample endpoints. Email, SMS, templates, delivery status, and event consumers are not implemented. |
 | `GRD.SpChn.ProductCatalog.Api` | 5006 | `/api/products/{**catch-all}` | **Scaffold** | Intended to own product definitions, attributes, and catalog queries; currently only template behavior exists. |
 | `GRD.SpChn.Shipment.Api` | 5059 | `/api/shipments/{**catch-all}` | **Scaffold** | Intended to own shipment planning and shipment state; currently only template behavior exists. |
-| `GRD.SpChn.Procurement.Api` | 5112 | `/api/procurement/{**catch-all}` | **Scaffold** | Intended to own purchase/procurement workflows; currently only template behavior exists. |
+| `GRD.SpChn.Procurement.Api` | 5112 | `/api/procurement/{**catch-all}` | **Implemented** | Owns the first ERP slice: Material Request, approval, Purchase Order, Outbox publishing and GRN-driven closure. |
 | `GRD.SpChn.Supplier.Api` | 5141 | `/api/suppliers/{**catch-all}` | **Scaffold** | Intended to own supplier information and supplier-facing operations; currently only template behavior exists. |
-| `GRD.SpChn.Organization.Api` | 5218 | `/api/organization/{**catch-all}` | **Scaffold** | Intended to own organization/tenant structure; currently only template behavior exists. |
+| `GRD.SpChn.Organization.Api` | 5218 | `/api/organization/{**catch-all}` | **Partial** | Owns and validates Enterprise, office, branch, plant, warehouse, sales and consumption-unit hierarchy nodes. Hierarchical access grants remain. |
 | `GRD.SpChn.Transportation.Api` | 5258 | `/api/transportation/{**catch-all}` | **Scaffold** | Intended to own transportation planning/tracking; currently only template behavior exists. |
 | `GRD.SpChn.Reporting.Api` | 5274 | `/api/reports/{**catch-all}` | **Scaffold** | Intended to expose reporting/read-model queries; currently only template behavior exists. |
-| `GRD.SpChn.Warehouse.Api` | 5276 | `/api/warehouses/{**catch-all}` | **Scaffold** | Intended to own warehouse operations; currently only template behavior exists. |
+| `GRD.SpChn.Warehouse.Api` | 5276 | `/api/warehouses/{**catch-all}` | **Implemented** | Consumes issued POs, creates expected receipts through Inbox, posts complete GRNs and publishes them through Outbox. |
 | `GRD.SpChn.Delivery.Api` | 5294 | `/api/delivery/{**catch-all}` | **Scaffold** | Intended to own last-mile delivery execution/status; currently only template behavior exists. |
 
 Every service API also maps common `/health/live` and `/health/ready` endpoints through
@@ -84,7 +92,7 @@ Every service API also maps common `/health/live` and `/health/ready` endpoints 
 
 | Worker process | HTTP port | Status | Current responsibility |
 | --- | ---: | --- | --- |
-| `GRD.SpChn.OutboxPublisher` | None | **Implemented** | Polls `order_management_outbox` and `inventory_outbox`, publishes due messages to RabbitMQ, marks confirmed messages processed, and records retry state after failure. |
+| `GRD.SpChn.OutboxPublisher` | None | **Implemented** | Polls Order, Inventory, Procurement and Warehouse Outboxes, publishes due messages to RabbitMQ, marks confirmed messages processed, and records retry state after failure. |
 | `GRD.SpChn.EventProcessor` | None | **Scaffold** | Registers MySQL/RabbitMQ building blocks but currently only writes a timed heartbeat log. It does not process business events yet. |
 | `GRD.SpChn.ProjectionBuilder` | None | **Scaffold** | Registers MySQL/RabbitMQ building blocks but currently only writes a timed heartbeat log. It does not build a read projection yet. |
 
@@ -101,7 +109,7 @@ workers. They are hosted inside the Inventory API and Order Management API proce
 
 ## Minimum processes for the implemented order workflow
 
-You do not need all 19 runtime components to test the current vertical slice. Enable:
+You do not need all 20 runtime components to test the current vertical slice. Enable:
 
 ```text
 MySQL container
@@ -217,6 +225,7 @@ Architecture tests enforce the important project-reference rules.
 | `GRD.SpChn.EventBus.RabbitMQ` | RabbitMQ publishing, consumers, acknowledgement, retry, topology, and dead-letter behavior. | Service-specific business decisions. |
 | `GRD.SpChn.Persistence.MySql` | MySQL connection factory and common persistence registration. | Service-owned SQL/repository behavior. |
 | `GRD.SpChn.Observability` | Serilog console/request logging, Problem Details, and common liveness/readiness endpoints. | Service-specific business logging decisions. |
+| `GRD.SpChn.Security` | JWT issuance/validation, standard claims, permissions and policies shared by APIs. | User persistence or service-specific authorization decisions. |
 | `GRD.SpChn.SharedKernel` | Small cross-cutting primitives such as `Result<T>` and `Error`. | Service-specific entities or workflows. |
 
 Shared building blocks reduce technical duplication. They must not become a shared
@@ -236,7 +245,8 @@ business-logic monolith.
 | SQL mapping | Dapper 2.1 | Infrastructure repositories and workers. |
 | Message broker | RabbitMQ 4 | Integration-event transport. |
 | RabbitMQ client | RabbitMQ.Client 7.2 | Shared RabbitMQ adapter. |
-| Reliability | Outbox, Inbox, Unit of Work, manual acknowledgements, bounded retry, dead-letter queues | Implemented Order/Inventory slice. |
+| Reliability | Outbox, Inbox, Unit of Work, manual acknowledgements, bounded retry, dead-letter queues | Implemented Order/Inventory and Procure-to-Receive slices. |
+| Security | JWT bearer authentication + permission policies | Identity issues organization-scoped development tokens; protected ERP endpoints validate them. |
 | Logging | Serilog.AspNetCore 10 | Shared observability defaults and console/request logs. |
 | Health | ASP.NET Core Health Checks | `/health/live` and `/health/ready`. |
 | API discovery and testing | ASP.NET Core OpenAPI + Swashbuckle Swagger UI | Development-only `/swagger` on every API, with base-address redirects. Gateway `/swagger` provides a dark, same-origin selector for all 13 service documents. |
@@ -245,8 +255,9 @@ business-logic monolith.
 | Local orchestration | PowerShell + VS Code tasks | `scripts/start-local-services.ps1` and `.vscode/tasks.json`. |
 
 Not currently implemented as production capabilities: OpenTelemetry distributed
-tracing, an authentication/token service, persisted Saga storage, Polly HTTP circuit
-breakers, Kubernetes manifests, or business logic for the scaffold services.
+tracing, production identity lifecycle/key management, persisted Saga storage, Polly
+HTTP circuit breakers, Kubernetes manifests, or business logic for the remaining
+scaffold services.
 
 ## Configuration ownership
 
@@ -258,6 +269,7 @@ breakers, Kubernetes manifests, or business logic for the scaffold services.
 | VS Code terminal orchestration | `.vscode/tasks.json`. |
 | MySQL/RabbitMQ containers and ports | `deploy/docker/compose.infrastructure.yml` and optional `.env`. |
 | Order/Inventory schema | `deploy/docker/mysql/init/001_order_inventory_workflow.sql`. |
+| ERP hierarchy/procurement/receipt schema | `deploy/docker/mysql/init/002_erp_procure_to_receive.sql`. |
 | Outbox sources/polling | `Workers/GRD.SpChn.OutboxPublisher/appsettings.json`. |
 | RabbitMQ retry settings | Implemented API `appsettings*.json` plus environment variables. |
 
@@ -266,15 +278,15 @@ connection strings to these files.
 
 ## Known gaps that future developers must not miss
 
-1. Nine service APIs are scaffolds. A running process and a `200` WeatherForecast
+1. Six service APIs are scaffolds. A running process and a `200` WeatherForecast
    response do not mean its business capability exists.
 2. Event Processor and Projection Builder are heartbeat templates only.
-3. Identity is not an authentication system yet. Its placeholder
-   `IdentityController` currently uses an `api/notifications` route and reports the
-   Notifications service name; correct that when implementing Identity endpoints.
+3. Identity supports the first-slice login/JWT flow, but production user lifecycle,
+   password reset/MFA, refresh/revocation, key rotation and hierarchical scope grants
+   remain to be implemented.
 4. Notifications does not send messages yet.
-5. Common authorization middleware is present, but authentication/authorization
-   schemes and real policies are not implemented.
+5. ERP endpoints use real permission policies. Existing Order endpoints are still
+   anonymous and require an explicit migration plan before production exposure.
 6. Readiness currently includes only registered checks; add MySQL/RabbitMQ checks
    deliberately when deployment requirements are defined.
 7. The current local workflow uses one MySQL container/schema. Preserve service table
@@ -306,6 +318,7 @@ connection strings to these files.
 | Document | Use it for |
 | --- | --- |
 | [`README.md`](../README.md) | Quick start, prerequisites, current Order/Inventory smoke flow. |
+| [`erp-procure-to-receive.md`](erp-procure-to-receive.md) | First ERP hierarchy, login, role, Material Request, PO, GRN and location-stock flow. |
 | [`local-service-runner.md`](local-service-runner.md) | Starting/stopping processes and disabling services. |
 | [`event-driven-development.md`](event-driven-development.md) | Architecture rules, patterns, transaction boundaries, and delivery guarantees. |
 | [`development-phases/phase-4-commands-queries.md`](development-phases/phase-4-commands-queries.md) | Application commands, queries, handler tests, and user scenarios. |

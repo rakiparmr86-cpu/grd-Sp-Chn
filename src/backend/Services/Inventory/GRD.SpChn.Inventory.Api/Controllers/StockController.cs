@@ -1,8 +1,11 @@
 using GRD.SpChn.Inventory.Application.Stock;
 using GRD.SpChn.Inventory.Application.Stock.GetStock;
+using GRD.SpChn.Inventory.Application.Stock.GetLocationStock;
 using GRD.SpChn.Inventory.Application.Stock.SetStock;
+using GRD.SpChn.Security;
 using GRD.SpChn.SharedKernel;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GRD.SpChn.Inventory.Api.Controllers;
@@ -32,6 +35,19 @@ public sealed class StockController(ISender sender) : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(new GetStockQuery(productId), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : ToProblem(result);
+    }
+
+    [Authorize(Policy = ErpPolicies.InventoryStockRead)]
+    [HttpGet("locations/{organizationUnitId:guid}/{productId:guid}")]
+    public async Task<IActionResult> GetLocationStock(
+        Guid organizationUnitId,
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new GetLocationStockQuery(organizationUnitId, productId),
+            cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : ToProblem(result);
     }
 

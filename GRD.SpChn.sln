@@ -177,6 +177,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GRD.SpChn.UnitTests", "test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GRD.SpChn.Persistence.MySql", "src\backend\BuildingBlocks\GRD.SpChn.Persistence.MySql\GRD.SpChn.Persistence.MySql.csproj", "{EE9E57C6-60C5-460E-AB0D-FFA0B820EE7C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildingBlocks", "BuildingBlocks", "{7266C4A9-E384-DC00-0EB6-47F6002CFBA7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GRD.SpChn.Security", "src\backend\BuildingBlocks\GRD.SpChn.Security\GRD.SpChn.Security.csproj", "{1569D973-56A8-4D81-A099-8F66CE13B2C6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -979,6 +983,18 @@ Global
 		{EE9E57C6-60C5-460E-AB0D-FFA0B820EE7C}.Release|x64.Build.0 = Release|Any CPU
 		{EE9E57C6-60C5-460E-AB0D-FFA0B820EE7C}.Release|x86.ActiveCfg = Release|Any CPU
 		{EE9E57C6-60C5-460E-AB0D-FFA0B820EE7C}.Release|x86.Build.0 = Release|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Debug|x64.Build.0 = Debug|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Debug|x86.Build.0 = Debug|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Release|x64.ActiveCfg = Release|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Release|x64.Build.0 = Release|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Release|x86.ActiveCfg = Release|Any CPU
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -1069,5 +1085,6 @@ Global
 		{D1D002AB-12DA-4CAE-B95B-E95258532B5A} = {C62EED4C-2AC9-F50F-E0BC-649CFEA98BDB}
 		{E2A3F2BE-0A53-4902-9681-FF4FCBA66D7D} = {C62EED4C-2AC9-F50F-E0BC-649CFEA98BDB}
 		{EE9E57C6-60C5-460E-AB0D-FFA0B820EE7C} = {1F27AE91-AB80-590E-03BE-DC8A6BA540DD}
+		{1569D973-56A8-4D81-A099-8F66CE13B2C6} = {7266C4A9-E384-DC00-0EB6-47F6002CFBA7}
 	EndGlobalSection
 EndGlobal

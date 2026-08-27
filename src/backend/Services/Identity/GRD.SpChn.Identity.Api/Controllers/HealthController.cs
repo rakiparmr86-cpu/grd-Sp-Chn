@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace GRD.SpChn.Identity.Api.Controllers;
 
 [ApiController]
-[Route("api/health")]
+[Route("health/details")]
 public class HealthController : ControllerBase
 {
     [HttpGet]

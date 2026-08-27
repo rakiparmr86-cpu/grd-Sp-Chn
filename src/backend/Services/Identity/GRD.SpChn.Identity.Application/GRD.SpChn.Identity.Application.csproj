@@ -5,6 +5,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.SharedKernel\GRD.SpChn.SharedKernel.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Contracts\GRD.SpChn.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.EventBus.Abstractions\GRD.SpChn.EventBus.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Security\GRD.SpChn.Security.csproj" />
   </ItemGroup>
 
   <ItemGroup>

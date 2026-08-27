@@ -33,6 +33,7 @@ $serviceRegistry = @(
     [pscustomobject]@{ Name = "OutboxPublisher";  Enabled = $true; Port = $null; Kind = "Worker"; Project = "src/backend/Workers/GRD.SpChn.OutboxPublisher/GRD.SpChn.OutboxPublisher.csproj" }
     [pscustomobject]@{ Name = "EventProcessor";   Enabled = $true; Port = $null; Kind = "Worker"; Project = "src/backend/Workers/GRD.SpChn.EventProcessor/GRD.SpChn.EventProcessor.csproj" }
     [pscustomobject]@{ Name = "ProjectionBuilder"; Enabled = $true; Port = $null; Kind = "Worker"; Project = "src/backend/Workers/GRD.SpChn.ProjectionBuilder/GRD.SpChn.ProjectionBuilder.csproj" }
+    [pscustomobject]@{ Name = "Web";              Enabled = $true; Port = 5173; Kind = "React UI"; Runtime = "Node"; Project = "src/frontend/grd-spchn-web" }
 )
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
@@ -57,6 +58,8 @@ function Initialize-LocalEnvironment {
     Set-DefaultEnvironmentVariable "ConnectionStrings__Database" "Server=localhost;Port=3306;Database=grd_local;User ID=grd;Password=grd-local"
     Set-DefaultEnvironmentVariable "ConnectionStrings__OrderDatabase" "Server=localhost;Port=3306;Database=grd_local;User ID=grd;Password=grd-local"
     Set-DefaultEnvironmentVariable "ConnectionStrings__InventoryDatabase" "Server=localhost;Port=3306;Database=grd_local;User ID=grd;Password=grd-local"
+    Set-DefaultEnvironmentVariable "ConnectionStrings__ProcurementDatabase" "Server=localhost;Port=3306;Database=grd_local;User ID=grd;Password=grd-local"
+    Set-DefaultEnvironmentVariable "ConnectionStrings__WarehouseDatabase" "Server=localhost;Port=3306;Database=grd_local;User ID=grd;Password=grd-local"
     Set-DefaultEnvironmentVariable "RabbitMq__HostName" "localhost"
     Set-DefaultEnvironmentVariable "RabbitMq__Port" "5672"
     Set-DefaultEnvironmentVariable "RabbitMq__UserName" "grd"
@@ -85,7 +88,9 @@ function Assert-ServiceRegistry {
 
     foreach ($entry in $serviceRegistry) {
         $projectPath = Join-Path $repositoryRoot $entry.Project
-        if (-not (Test-Path -LiteralPath $projectPath -PathType Leaf)) {
+        $isNode = $entry.PSObject.Properties.Name -contains "Runtime" -and $entry.Runtime -eq "Node"
+        $pathType = if ($isNode) { "Container" } else { "Leaf" }
+        if (-not (Test-Path -LiteralPath $projectPath -PathType $pathType)) {
             throw "Project for '$($entry.Name)' does not exist: $projectPath"
         }
     }
@@ -123,6 +128,24 @@ function Build-EnabledServices {
     foreach ($entry in Get-EnabledServices) {
         $projectPath = Join-Path $repositoryRoot $entry.Project
         Write-Host "Building $($entry.Name)..." -ForegroundColor Cyan
+        $isNode = $entry.PSObject.Properties.Name -contains "Runtime" -and $entry.Runtime -eq "Node"
+        if ($isNode) {
+            Push-Location -LiteralPath $projectPath
+            try {
+                if (-not (Test-Path -LiteralPath "node_modules" -PathType Container)) {
+                    Write-Host "Installing frontend packages (first run only)..." -ForegroundColor Cyan
+                    & npm install
+                    if ($LASTEXITCODE -ne 0) { throw "npm install failed for '$($entry.Name)'." }
+                }
+                & npm run build
+                if ($LASTEXITCODE -ne 0) { throw "Build failed for '$($entry.Name)'." }
+            }
+            finally {
+                Pop-Location
+            }
+            continue
+        }
+
         $buildArguments = @("build", $projectPath, "--nologo")
         if ($NoRestore) {
             $buildArguments += "--no-restore"
@@ -149,6 +172,35 @@ function Invoke-Service {
     Initialize-LocalEnvironment
     Set-Location -LiteralPath $repositoryRoot
     $projectPath = Join-Path $repositoryRoot $Entry.Project
+    $isNode = $Entry.PSObject.Properties.Name -contains "Runtime" -and $Entry.Runtime -eq "Node"
+
+    if ($isNode) {
+        Push-Location -LiteralPath $projectPath
+        try {
+            if (-not (Test-Path -LiteralPath "node_modules" -PathType Container)) {
+                if ($NoBuild) {
+                    throw "Frontend packages are missing. Run 'npm install' in '$projectPath' first."
+                }
+
+                Write-Host "Installing frontend packages (first run only)..." -ForegroundColor Cyan
+                & npm install
+                if ($LASTEXITCODE -ne 0) { throw "npm install failed for '$($Entry.Name)'." }
+            }
+
+            if (-not $NoBuild) {
+                Write-Host "Building $($Entry.Name) before launch..." -ForegroundColor Cyan
+                & npm run build
+                if ($LASTEXITCODE -ne 0) { throw "Build failed for '$($Entry.Name)'." }
+            }
+
+            Write-Host "Starting $($Entry.Name) ($($Entry.Kind)) - http://localhost:$($Entry.Port)" -ForegroundColor Green
+            & npm run dev
+            exit $LASTEXITCODE
+        }
+        finally {
+            Pop-Location
+        }
+    }
 
     if (-not $NoBuild) {
         Write-Host "Building $($Entry.Name) before launch..." -ForegroundColor Cyan

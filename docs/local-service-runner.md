@@ -12,9 +12,10 @@ The repository provides two entry points backed by the same service registry:
 2. `scripts/start-local-services.ps1` builds once and opens one separate PowerShell
    console per enabled service.
 
-Both approaches deliberately build enabled projects sequentially and then use
-`dotnet run --no-build`. This prevents multiple parallel `dotnet run` commands from
-trying to rebuild/copy the same shared outputs.
+Both approaches deliberately build enabled projects sequentially and then launch
+them without rebuilding. .NET projects use `dotnet run --no-build`; the React web
+project uses `npm run dev`. This prevents parallel .NET commands from trying to
+rebuild/copy the same shared outputs.
 
 ## Enable or disable a service
 
@@ -57,7 +58,7 @@ VS Code performs this sequence:
 
 ```text
 Start MySQL + RabbitMQ
-  -> build enabled projects one at a time
+  -> build enabled .NET and React projects one at a time
   -> launch all enabled projects in parallel with --no-build
   -> show each process in its own dedicated terminal
 ```
@@ -147,6 +148,7 @@ pwsh -NoProfile -File scripts\start-local-services.ps1
 | Reporting | `http://localhost:5274` |
 | Warehouse | `http://localhost:5276` |
 | Delivery | `http://localhost:5294` |
+| React Web | `http://localhost:5173` |
 
 `OutboxPublisher`, `EventProcessor`, and `ProjectionBuilder` are background workers
 and do not listen on HTTP ports.

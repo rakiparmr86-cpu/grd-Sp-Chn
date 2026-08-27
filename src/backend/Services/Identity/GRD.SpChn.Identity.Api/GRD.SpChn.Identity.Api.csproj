@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Observability\GRD.SpChn.Observability.csproj"
                       ReferenceOutputAssembly="true"
                       Private="true" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Security\GRD.SpChn.Security.csproj" />
   </ItemGroup>
 
 </Project>
