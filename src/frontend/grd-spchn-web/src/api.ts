@@ -24,6 +24,20 @@ export interface AccessProfile {
   role: string
 }
 
+export interface ManagedAccessProfile extends AccessProfile {
+  isHrAssignable: boolean
+  isActive: boolean
+  permissions: string[]
+}
+
+export interface PermissionDefinition {
+  code: string
+  displayName: string
+  module: string
+  description: string
+  isActive: boolean
+}
+
 export interface CreateUserRequest {
   userName: string
   password: string
@@ -105,6 +119,31 @@ export const api = {
     request<AccessProfile[]>(
       '/api/identity/users/access-profiles',
       {},
+      accessToken,
+    ),
+
+  getManagedAccessProfiles: (accessToken: string) =>
+    request<ManagedAccessProfile[]>(
+      '/api/identity/access-profiles',
+      {},
+      accessToken,
+    ),
+
+  getPermissionCatalog: (accessToken: string) =>
+    request<PermissionDefinition[]>(
+      '/api/identity/access-profiles/permissions',
+      {},
+      accessToken,
+    ),
+
+  replaceAccessProfilePermissions: (
+    accessToken: string,
+    accessProfileCode: string,
+    permissionCodes: string[],
+  ) =>
+    request<ManagedAccessProfile>(
+      `/api/identity/access-profiles/${encodeURIComponent(accessProfileCode)}/permissions`,
+      { method: 'PUT', body: JSON.stringify({ permissionCodes }) },
       accessToken,
     ),
 

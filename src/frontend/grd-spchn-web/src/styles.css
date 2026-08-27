@@ -427,6 +427,56 @@ button { cursor: pointer; }
 .create-user-form { display: grid; gap: 20px; padding-top: 25px; }
 .drawer-loading { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 300px; color: #6d7990; font-size: .82rem; }
 .drawer-actions { display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; padding-top: 6px; }
+.permission-drawer { width: min(760px, 100%); }
+.permission-editor { display: grid; gap: 20px; padding-top: 25px; }
+.permission-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 12px 14px;
+  border: 1px solid #dce4f0;
+  border-radius: 9px;
+  color: #6d7990;
+  background: #f8faff;
+  font-size: .72rem;
+}
+.permission-summary strong { margin-right: 4px; color: var(--blue-dark); font-size: .95rem; }
+.permission-groups { display: grid; gap: 15px; }
+.permission-group { overflow: hidden; border: 1px solid #e0e6ef; border-radius: 11px; }
+.permission-group h3 {
+  margin: 0;
+  padding: 11px 15px;
+  color: #55627a;
+  background: #f5f7fb;
+  font-size: .71rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.permission-option {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  padding: 13px 15px;
+  border-top: 1px solid #edf0f5;
+  cursor: pointer;
+}
+.permission-option:hover { background: #fbfcff; }
+.permission-option input { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--blue); }
+.permission-option input:disabled { cursor: not-allowed; }
+.permission-option > span { display: flex; flex-direction: column; gap: 3px; }
+.permission-option strong { color: #354157; font-size: .78rem; }
+.permission-option small { color: #788499; font-size: .69rem; line-height: 1.45; }
+.permission-option code { color: #6d7fa3; font: 600 .62rem Consolas, monospace; }
+.permission-token-note {
+  padding: 12px 14px;
+  border-left: 3px solid #e9a332;
+  color: #756344;
+  background: #fff9ee;
+  font-size: .72rem;
+  line-height: 1.5;
+}
+.permission-actions { position: sticky; bottom: -30px; padding: 16px 0 0; background: #fff; }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes slide-in { from { transform: translateX(50px); opacity: .5; } }
 
@@ -471,4 +521,5 @@ button { cursor: pointer; }
   .action-grid { grid-template-columns: 1fr; }
   .section-heading { align-items: flex-start; flex-direction: column; }
   .user-drawer { padding: 24px 20px; }
+  .permission-summary { align-items: flex-start; flex-direction: column; }
 }

@@ -75,6 +75,79 @@ After changing code, stop the affected task, run `GRD: Prepare enabled services`
 start it again. Do not rebuild a project while the same project's executable is
 running, because Windows can lock its generated `.exe`.
 
+## Debug from VS Code
+
+The repository includes `.vscode/launch.json` for C# and React debugging. Install
+the recommended **C# Dev Kit** and **C#** extensions when VS Code offers them.
+The PowerShell extension is useful for debugging the helper scripts, but it is not
+required to debug a .NET API.
+
+### A service is already running
+
+Use this approach when the services were started with `GRD: Start enabled services`:
+
+1. Add a breakpoint in the API, application handler, repository, consumer, or worker.
+2. Open **Run and Debug** (`Ctrl+Shift+D`).
+3. Select `GRD: Attach to a running .NET service`.
+4. Press `F5` and choose the process whose name matches the service.
+
+Run the attach profile again if more than one .NET process must be debugged. Stopping
+an attached debug session detaches VS Code; it does not intentionally stop the service.
+
+### Launch one service under the debugger
+
+Stop the normal copy of that service first. Then select its named profile, such as
+`GRD: Identity API (7001)`, and press `F5`. Before launch, VS Code:
+
+1. checks that the service port/process is not already running;
+2. starts the Docker MySQL and RabbitMQ infrastructure;
+3. builds only the selected project;
+4. launches the compiled DLL with the C# debugger attached.
+
+The safety/build logic is in `scripts/prepare-vscode-debug.ps1`; the VS Code wiring is
+in `.vscode/tasks.json` and `.vscode/launch.json`. The local debug connection strings
+currently use MySQL on `localhost:3308`, matching `deploy/docker/.env`.
+
+For the procure-to-receive workflow, keep Gateway, Identity, Procurement, Warehouse,
+Inventory, and OutboxPublisher running. Attach to the process you are investigating,
+or stop just that one process and launch its named debug profile.
+
+### Debug React
+
+Start the Web service normally, select
+`GRD: React Web (Vite already running on 5173)`, and press `F5`. VS Code opens a Chrome
+debug session with source maps mapped to `src/frontend/grd-spchn-web/src`, so
+breakpoints in `.tsx` files bind to the original TypeScript source.
+
+### Port or executable already in use
+
+That means a normal copy of the same service is still running. Do one of these:
+
+- select the attach profile and debug the existing process; or
+- stop that service terminal with `Ctrl+C`, then launch its named debug profile.
+
+Do not launch a second copy on the same port, and do not rebuild a running service on
+Windows, because its generated executable can be locked.
+
+### Start every backend service with one F5
+
+Use `GRD: Start ALL backend services with debugger` when a full-system debug session
+is genuinely required. Stop any normally running GRD API/worker first, select this
+compound profile in **Run and Debug**, and press `F5` once.
+
+VS Code then performs this sequence:
+
+1. verifies that all GRD API ports and worker process names are free;
+2. starts the Docker MySQL and RabbitMQ infrastructure;
+3. builds all enabled projects sequentially to avoid Windows executable locks;
+4. launches all 14 backend APIs and 3 workers with a debugger attached to each;
+5. stops every process launched by the compound when the debug session is stopped.
+
+The compound is intended for cross-service investigation and uses significantly more
+memory than debugging one workflow. React/Vite is deliberately excluded. Start the
+frontend separately with `GRD: Web`, then use the React browser debug profile when
+frontend source breakpoints are needed.
+
 ## Start from PowerShell
 
 From the repository root:

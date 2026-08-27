@@ -101,6 +101,7 @@ deploy/docker/mysql/init/001_order_inventory_workflow.sql
 deploy/docker/mysql/init/002_erp_procure_to_receive.sql
 deploy/docker/mysql/init/003_identity_user_management.sql
 deploy/docker/mysql/init/004_identity_access_profiles.sql
+deploy/docker/mysql/init/005_identity_dynamic_permissions.sql
 ```
 
 MySQL initialization scripts run only when the data volume is first created. If the
@@ -108,7 +109,8 @@ MySQL initialization scripts run only when the data volume is first created. If 
 manually using your MySQL client. Do not delete an existing volume unless its data is
 no longer required.
 
-To apply only the new local HR account and demo password to an existing volume:
+To apply the local HR account, demo password, database-owned access profiles, and
+dynamic permission catalog to an existing volume:
 
 ```powershell
 pwsh -NoProfile -File scripts\apply-local-identity-seed.ps1

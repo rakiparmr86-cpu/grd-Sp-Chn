@@ -37,6 +37,35 @@ $serviceRegistry = @(
 )
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
+$dockerEnvironmentFile = Join-Path $repositoryRoot "deploy/docker/.env"
+
+function Read-DotEnvFile {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $values = @{}
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $values
+    }
+
+    foreach ($line in Get-Content -LiteralPath $Path) {
+        if ($line -notmatch '^\s*([^#=]+)=(.*)$') {
+            continue
+        }
+
+        $name = $matches[1].Trim()
+        $value = $matches[2].Trim()
+        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or
+            ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+
+        $values[$name] = $value
+    }
+
+    return $values
+}
+
+$dockerEnvironment = Read-DotEnvFile -Path $dockerEnvironmentFile
 
 function Set-DefaultEnvironmentVariable {
     param(
@@ -52,18 +81,46 @@ function Set-DefaultEnvironmentVariable {
     }
 }
 
+function Get-LocalInfrastructureSetting {
+    param(
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$DefaultValue
+    )
+
+    $processValue = [Environment]::GetEnvironmentVariable($Name)
+    if (-not [string]::IsNullOrWhiteSpace($processValue)) {
+        return $processValue
+    }
+
+    if ($dockerEnvironment.ContainsKey($Name) -and
+        -not [string]::IsNullOrWhiteSpace($dockerEnvironment[$Name])) {
+        return $dockerEnvironment[$Name]
+    }
+
+    return $DefaultValue
+}
+
 function Initialize-LocalEnvironment {
+    $mysqlDatabase = Get-LocalInfrastructureSetting "MYSQL_DATABASE" "grd_local"
+    $mysqlUser = Get-LocalInfrastructureSetting "MYSQL_USER" "grd"
+    $mysqlPassword = Get-LocalInfrastructureSetting "MYSQL_PASSWORD" "grd-local"
+    $mysqlPort = Get-LocalInfrastructureSetting "MYSQL_PORT" "3306"
+    $rabbitMqUser = Get-LocalInfrastructureSetting "RABBITMQ_USER" "grd"
+    $rabbitMqPassword = Get-LocalInfrastructureSetting "RABBITMQ_PASSWORD" "grd-local"
+    $rabbitMqPort = Get-LocalInfrastructureSetting "RABBITMQ_PORT" "5672"
+    $databaseConnection = "Server=localhost;Port=$mysqlPort;Database=$mysqlDatabase;User ID=$mysqlUser;Password=$mysqlPassword;SslMode=None"
+
     Set-DefaultEnvironmentVariable "ASPNETCORE_ENVIRONMENT" "Development"
     Set-DefaultEnvironmentVariable "DOTNET_ENVIRONMENT" "Development"
-    Set-DefaultEnvironmentVariable "ConnectionStrings__Database" "Server=localhost;Port=3306;Database=grd_local;User ID=grd;Password=grd-local"
-    Set-DefaultEnvironmentVariable "ConnectionStrings__OrderDatabase" "Server=localhost;Port=3306;Database=grd_local;User ID=grd;Password=grd-local"
-    Set-DefaultEnvironmentVariable "ConnectionStrings__InventoryDatabase" "Server=localhost;Port=3306;Database=grd_local;User ID=grd;Password=grd-local"
-    Set-DefaultEnvironmentVariable "ConnectionStrings__ProcurementDatabase" "Server=localhost;Port=3306;Database=grd_local;User ID=grd;Password=grd-local"
-    Set-DefaultEnvironmentVariable "ConnectionStrings__WarehouseDatabase" "Server=localhost;Port=3306;Database=grd_local;User ID=grd;Password=grd-local"
+    Set-DefaultEnvironmentVariable "ConnectionStrings__Database" $databaseConnection
+    Set-DefaultEnvironmentVariable "ConnectionStrings__OrderDatabase" $databaseConnection
+    Set-DefaultEnvironmentVariable "ConnectionStrings__InventoryDatabase" $databaseConnection
+    Set-DefaultEnvironmentVariable "ConnectionStrings__ProcurementDatabase" $databaseConnection
+    Set-DefaultEnvironmentVariable "ConnectionStrings__WarehouseDatabase" $databaseConnection
     Set-DefaultEnvironmentVariable "RabbitMq__HostName" "localhost"
-    Set-DefaultEnvironmentVariable "RabbitMq__Port" "5672"
-    Set-DefaultEnvironmentVariable "RabbitMq__UserName" "grd"
-    Set-DefaultEnvironmentVariable "RabbitMq__Password" "grd-local"
+    Set-DefaultEnvironmentVariable "RabbitMq__Port" $rabbitMqPort
+    Set-DefaultEnvironmentVariable "RabbitMq__UserName" $rabbitMqUser
+    Set-DefaultEnvironmentVariable "RabbitMq__Password" $rabbitMqPassword
 }
 
 function Get-EnabledServices {
@@ -116,9 +173,16 @@ function Start-LocalInfrastructure {
     }
 
     Write-Host "Starting MySQL and RabbitMQ containers..." -ForegroundColor Cyan
-    & docker compose `
-        -f (Join-Path $repositoryRoot "deploy/docker/compose.infrastructure.yml") `
-        up -d
+    $composeArguments = @("compose")
+    if (Test-Path -LiteralPath $dockerEnvironmentFile -PathType Leaf) {
+        $composeArguments += @("--env-file", $dockerEnvironmentFile)
+    }
+    $composeArguments += @(
+        "-f",
+        (Join-Path $repositoryRoot "deploy/docker/compose.infrastructure.yml"),
+        "up",
+        "-d")
+    & docker @composeArguments
     if ($LASTEXITCODE -ne 0) {
         throw "Docker infrastructure failed to start."
     }

@@ -1,3 +1,4 @@
+using GRD.SpChn.Identity.Application.AccessProfiles.ReplacePermissions;
 using GRD.SpChn.Identity.Domain;
 using GRD.SpChn.Security;
 
@@ -61,5 +62,28 @@ public sealed class IdentityAccessProfileTests
             ]);
 
         Assert.Equal(2, profile.Permissions.Count);
+    }
+
+    [Fact]
+    public void Director_cannot_remove_the_permission_management_capability()
+    {
+        var isSafe = AccessProfilePermissionRules.PreservesRequiredAdministration(
+            "Director",
+            [ErpPermissions.OrganizationManage]);
+
+        Assert.False(isSafe);
+    }
+
+    [Fact]
+    public void Director_can_update_permissions_when_management_access_is_retained()
+    {
+        var isSafe = AccessProfilePermissionRules.PreservesRequiredAdministration(
+            "Director",
+            [
+                ErpPermissions.IdentityAccessProfileManage,
+                ErpPermissions.OrganizationManage
+            ]);
+
+        Assert.True(isSafe);
     }
 }

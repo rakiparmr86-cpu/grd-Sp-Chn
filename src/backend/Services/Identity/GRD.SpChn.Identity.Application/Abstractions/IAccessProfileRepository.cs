@@ -10,4 +10,15 @@ public interface IAccessProfileRepository
 
     Task<IReadOnlyCollection<AccessProfile>> GetHrAssignableAsync(
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<AccessProfile>> GetAllAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<PermissionDefinition>> GetPermissionCatalogAsync(
+        CancellationToken cancellationToken = default);
+
+    Task ReplacePermissionsAsync(
+        string accessProfileCode,
+        IReadOnlyCollection<string> permissionCodes,
+        CancellationToken cancellationToken = default);
 }

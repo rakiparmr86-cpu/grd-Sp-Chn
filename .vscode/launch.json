@@ -1,0 +1,444 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "GRD: Attach to a running .NET service",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}",
+      "justMyCode": true
+    },
+    {
+      "name": "GRD: API Gateway (7000)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "GRD: Debug prepare ApiGateway",
+      "program": "${workspaceFolder}\\src\\backend\\ApiGateway\\GRD.SpChn.ApiGateway\\bin\\Debug\\net10.0\\GRD.SpChn.ApiGateway.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\ApiGateway\\GRD.SpChn.ApiGateway",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "justMyCode": true,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "GRD: Identity API (7001)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "GRD: Debug prepare Identity",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Identity\\GRD.SpChn.Identity.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Identity.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Identity\\GRD.SpChn.Identity.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "justMyCode": true,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None"
+      }
+    },
+    {
+      "name": "GRD: Notifications API (7002)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "GRD: Debug prepare Notifications",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Notifications\\GRD.SpChn.Notifications.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Notifications.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Notifications\\GRD.SpChn.Notifications.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "justMyCode": true,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "GRD: Procurement API (5112)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "GRD: Debug prepare Procurement",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Procurement\\GRD.SpChn.Procurement.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Procurement.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Procurement\\GRD.SpChn.Procurement.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "justMyCode": true,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__ProcurementDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost",
+        "RabbitMq__Port": "5672",
+        "RabbitMq__UserName": "grd",
+        "RabbitMq__Password": "grd-local"
+      }
+    },
+    {
+      "name": "GRD: Warehouse API (5276)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "GRD: Debug prepare Warehouse",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Warehouse\\GRD.SpChn.Warehouse.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Warehouse.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Warehouse\\GRD.SpChn.Warehouse.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "justMyCode": true,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__WarehouseDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost",
+        "RabbitMq__Port": "5672",
+        "RabbitMq__UserName": "grd",
+        "RabbitMq__Password": "grd-local"
+      }
+    },
+    {
+      "name": "GRD: Inventory API (5018)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "GRD: Debug prepare Inventory",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Inventory\\GRD.SpChn.Inventory.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Inventory.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Inventory\\GRD.SpChn.Inventory.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "justMyCode": true,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__InventoryDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost",
+        "RabbitMq__Port": "5672",
+        "RabbitMq__UserName": "grd",
+        "RabbitMq__Password": "grd-local"
+      }
+    },
+    {
+      "name": "GRD: Outbox Publisher worker",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "GRD: Debug prepare OutboxPublisher",
+      "program": "${workspaceFolder}\\src\\backend\\Workers\\GRD.SpChn.OutboxPublisher\\bin\\Debug\\net10.0\\GRD.SpChn.OutboxPublisher.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Workers\\GRD.SpChn.OutboxPublisher",
+      "launchSettingsProfile": "GRD.SpChn.OutboxPublisher",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "justMyCode": true,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__OrderDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__ProcurementDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__WarehouseDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost",
+        "RabbitMq__Port": "5672",
+        "RabbitMq__UserName": "grd",
+        "RabbitMq__Password": "grd-local"
+      }
+    },
+    {
+      "name": "GRD: React Web (Vite already running on 5173)",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}\\src\\frontend\\grd-spchn-web\\src",
+      "sourceMaps": true
+    },
+    {
+      "name": "GRD internal: ApiGateway",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\ApiGateway\\GRD.SpChn.ApiGateway\\bin\\Debug\\net10.0\\GRD.SpChn.ApiGateway.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\ApiGateway\\GRD.SpChn.ApiGateway",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Identity",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Identity\\GRD.SpChn.Identity.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Identity.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Identity\\GRD.SpChn.Identity.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Notifications",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Notifications\\GRD.SpChn.Notifications.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Notifications.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Notifications\\GRD.SpChn.Notifications.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: OrderManagement",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\OrderManagement\\GRD.SpChn.OrderManagement.Api\\bin\\Debug\\net10.0\\GRD.SpChn.OrderManagement.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\OrderManagement\\GRD.SpChn.OrderManagement.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__OrderDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Inventory",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Inventory\\GRD.SpChn.Inventory.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Inventory.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Inventory\\GRD.SpChn.Inventory.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__InventoryDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Delivery",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Delivery\\GRD.SpChn.Delivery.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Delivery.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Delivery\\GRD.SpChn.Delivery.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Organization",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Organization\\GRD.SpChn.Organization.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Organization.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Organization\\GRD.SpChn.Organization.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Procurement",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Procurement\\GRD.SpChn.Procurement.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Procurement.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Procurement\\GRD.SpChn.Procurement.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__ProcurementDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: ProductCatalog",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\ProductCatalog\\GRD.SpChn.ProductCatalog.Api\\bin\\Debug\\net10.0\\GRD.SpChn.ProductCatalog.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\ProductCatalog\\GRD.SpChn.ProductCatalog.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Reporting",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Reporting\\GRD.SpChn.Reporting.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Reporting.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Reporting\\GRD.SpChn.Reporting.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Shipment",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Shipment\\GRD.SpChn.Shipment.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Shipment.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Shipment\\GRD.SpChn.Shipment.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Supplier",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Supplier\\GRD.SpChn.Supplier.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Supplier.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Supplier\\GRD.SpChn.Supplier.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Transportation",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Transportation\\GRD.SpChn.Transportation.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Transportation.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Transportation\\GRD.SpChn.Transportation.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: Warehouse",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Warehouse\\GRD.SpChn.Warehouse.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Warehouse.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Warehouse\\GRD.SpChn.Warehouse.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__WarehouseDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: OutboxPublisher",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Workers\\GRD.SpChn.OutboxPublisher\\bin\\Debug\\net10.0\\GRD.SpChn.OutboxPublisher.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Workers\\GRD.SpChn.OutboxPublisher",
+      "launchSettingsProfile": "GRD.SpChn.OutboxPublisher",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__OrderDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__InventoryDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__ProcurementDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__WarehouseDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: EventProcessor",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Workers\\GRD.SpChn.EventProcessor\\bin\\Debug\\net10.0\\GRD.SpChn.EventProcessor.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Workers\\GRD.SpChn.EventProcessor",
+      "launchSettingsProfile": "GRD.SpChn.EventProcessor",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "GRD internal: ProjectionBuilder",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Workers\\GRD.SpChn.ProjectionBuilder\\bin\\Debug\\net10.0\\GRD.SpChn.ProjectionBuilder.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Workers\\GRD.SpChn.ProjectionBuilder",
+      "launchSettingsProfile": "GRD.SpChn.ProjectionBuilder",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "GRD: Start ALL backend services with debugger",
+      "configurations": [
+        "GRD internal: ApiGateway",
+        "GRD internal: Identity",
+        "GRD internal: Notifications",
+        "GRD internal: OrderManagement",
+        "GRD internal: Inventory",
+        "GRD internal: Delivery",
+        "GRD internal: Organization",
+        "GRD internal: Procurement",
+        "GRD internal: ProductCatalog",
+        "GRD internal: Reporting",
+        "GRD internal: Shipment",
+        "GRD internal: Supplier",
+        "GRD internal: Transportation",
+        "GRD internal: Warehouse",
+        "GRD internal: OutboxPublisher",
+        "GRD internal: EventProcessor",
+        "GRD internal: ProjectionBuilder"
+      ],
+      "preLaunchTask": "GRD: Debug prepare ALL backend services",
+      "stopAll": true
+    }
+  ]
+}

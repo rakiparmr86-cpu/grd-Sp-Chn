@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\..\src\backend\Services\Inventory\GRD.SpChn.Inventory.Application\GRD.SpChn.Inventory.Application.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Services\Inventory\GRD.SpChn.Inventory.Domain\GRD.SpChn.Inventory.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Services\Identity\GRD.SpChn.Identity.Application\GRD.SpChn.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\backend\Services\Identity\GRD.SpChn.Identity.Domain\GRD.SpChn.Identity.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Services\OrderManagement\GRD.SpChn.OrderManagement.Application\GRD.SpChn.OrderManagement.Application.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Services\OrderManagement\GRD.SpChn.OrderManagement.Domain\GRD.SpChn.OrderManagement.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Services\Organization\GRD.SpChn.Organization.Domain\GRD.SpChn.Organization.Domain.csproj" />

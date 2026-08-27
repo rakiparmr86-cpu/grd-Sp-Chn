@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-    [string]$Database = "grd_local",
-    [string]$User = "grd",
-    [string]$Password = "grd-local"
+    [string]$Database,
+    [string]$User,
+    [string]$Password
 )
 
 Set-StrictMode -Version Latest
@@ -10,11 +10,51 @@ $ErrorActionPreference = "Stop"
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $composeFile = Join-Path $repositoryRoot "deploy/docker/compose.infrastructure.yml"
+$dockerEnvironmentFile = Join-Path $repositoryRoot "deploy/docker/.env"
+
+$dockerEnvironment = @{}
+if (Test-Path -LiteralPath $dockerEnvironmentFile -PathType Leaf) {
+    foreach ($line in Get-Content -LiteralPath $dockerEnvironmentFile) {
+        if ($line -notmatch '^\s*([^#=]+)=(.*)$') {
+            continue
+        }
+
+        $name = $matches[1].Trim()
+        $value = $matches[2].Trim()
+        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or
+            ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+        $dockerEnvironment[$name] = $value
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($Database)) {
+    $Database = if ($dockerEnvironment.ContainsKey("MYSQL_DATABASE")) {
+        $dockerEnvironment["MYSQL_DATABASE"]
+    } else { "grd_local" }
+}
+if ([string]::IsNullOrWhiteSpace($User)) {
+    $User = if ($dockerEnvironment.ContainsKey("MYSQL_USER")) {
+        $dockerEnvironment["MYSQL_USER"]
+    } else { "grd" }
+}
+if ([string]::IsNullOrWhiteSpace($Password)) {
+    $Password = if ($dockerEnvironment.ContainsKey("MYSQL_PASSWORD")) {
+        $dockerEnvironment["MYSQL_PASSWORD"]
+    } else { "grd-local" }
+}
 $migrationFiles = @(
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/003_identity_user_management.sql")
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/004_identity_access_profiles.sql")
+    (Join-Path $repositoryRoot "deploy/docker/mysql/init/005_identity_dynamic_permissions.sql")
 )
-$containerId = & docker compose -f $composeFile ps -q mysql
+$composeArguments = @("compose")
+if (Test-Path -LiteralPath $dockerEnvironmentFile -PathType Leaf) {
+    $composeArguments += @("--env-file", $dockerEnvironmentFile)
+}
+$composeArguments += @("-f", $composeFile, "ps", "-q", "mysql")
+$containerId = & docker @composeArguments
 
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($containerId)) {
     throw "The GRD MySQL container is not running. Start Docker infrastructure first."
@@ -30,4 +70,4 @@ foreach ($migrationFile in $migrationFiles) {
     }
 }
 
-Write-Host "Local Identity accounts and database-owned access profiles are ready." -ForegroundColor Green
+Write-Host "Local Identity accounts, access profiles, and permission catalog are ready." -ForegroundColor Green

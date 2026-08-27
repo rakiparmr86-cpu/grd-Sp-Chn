@@ -32,6 +32,7 @@ public static class ErpRoles
 public static class ErpPermissions
 {
     public const string IdentityUserCreate = "identity.user.create";
+    public const string IdentityAccessProfileManage = "identity.access-profile.manage";
     public const string OrganizationRead = "organization.read";
     public const string OrganizationManage = "organization.manage";
     public const string MaterialRequestCreate = "procurement.material-request.create";
@@ -47,6 +48,7 @@ public static class ErpPermissions
 public static class ErpPolicies
 {
     public const string IdentityUserCreate = nameof(IdentityUserCreate);
+    public const string IdentityAccessProfileManage = nameof(IdentityAccessProfileManage);
     public const string OrganizationRead = nameof(OrganizationRead);
     public const string OrganizationManage = nameof(OrganizationManage);
     public const string MaterialRequestCreate = nameof(MaterialRequestCreate);
@@ -187,6 +189,7 @@ public static class SecurityDependencyInjection
         services.AddAuthorization(authorization =>
         {
             AddPermissionPolicy(authorization, ErpPolicies.IdentityUserCreate, ErpPermissions.IdentityUserCreate);
+            AddPermissionPolicy(authorization, ErpPolicies.IdentityAccessProfileManage, ErpPermissions.IdentityAccessProfileManage);
             AddPermissionPolicy(authorization, ErpPolicies.OrganizationRead, ErpPermissions.OrganizationRead);
             AddPermissionPolicy(authorization, ErpPolicies.OrganizationManage, ErpPermissions.OrganizationManage);
             AddPermissionPolicy(authorization, ErpPolicies.MaterialRequestCreate, ErpPermissions.MaterialRequestCreate);

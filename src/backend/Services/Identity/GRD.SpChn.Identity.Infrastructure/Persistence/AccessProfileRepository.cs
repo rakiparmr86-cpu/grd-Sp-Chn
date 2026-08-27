@@ -41,8 +41,99 @@ internal sealed class AccessProfileRepository(IDbConnectionFactory connectionFac
         CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
-        var rows = (await connection.QueryAsync<AccessProfilePermissionRow>(new CommandDefinition(
+        return Map(await QueryProfilesAsync(
+            connection,
+            "WHERE profile.is_hr_assignable = TRUE AND profile.is_active = TRUE",
+            cancellationToken));
+    }
+
+    public async Task<IReadOnlyCollection<AccessProfile>> GetAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        return Map(await QueryProfilesAsync(connection, string.Empty, cancellationToken));
+    }
+
+    public async Task<IReadOnlyCollection<PermissionDefinition>> GetPermissionCatalogAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<PermissionDefinition>(new CommandDefinition(
             """
+            SELECT code AS Code,
+                   display_name AS DisplayName,
+                   module_name AS Module,
+                   description AS Description,
+                   is_active AS IsActive
+            FROM identity_permissions
+            ORDER BY module_name, display_name;
+            """,
+            cancellationToken: cancellationToken));
+
+        return rows.ToArray();
+    }
+
+    public async Task ReplacePermissionsAsync(
+        string accessProfileCode,
+        IReadOnlyCollection<string> permissionCodes,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await connection.ExecuteAsync(new CommandDefinition(
+                """
+                DELETE FROM identity_access_profile_permissions
+                WHERE access_profile_code = @AccessProfileCode;
+                """,
+                new { AccessProfileCode = accessProfileCode },
+                transaction,
+                cancellationToken: cancellationToken));
+
+            if (permissionCodes.Count > 0)
+            {
+                await connection.ExecuteAsync(new CommandDefinition(
+                    """
+                    INSERT INTO identity_access_profile_permissions
+                        (access_profile_code, permission_code)
+                    VALUES
+                        (@AccessProfileCode, @PermissionCode);
+                    """,
+                    permissionCodes.Select(permissionCode => new
+                    {
+                        AccessProfileCode = accessProfileCode,
+                        PermissionCode = permissionCode
+                    }),
+                    transaction,
+                    cancellationToken: cancellationToken));
+            }
+
+            await connection.ExecuteAsync(new CommandDefinition(
+                """
+                UPDATE identity_access_profiles
+                SET updated_on_utc = UTC_TIMESTAMP(6)
+                WHERE code = @AccessProfileCode;
+                """,
+                new { AccessProfileCode = accessProfileCode },
+                transaction,
+                cancellationToken: cancellationToken));
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    private static async Task<IReadOnlyCollection<AccessProfilePermissionRow>> QueryProfilesAsync(
+        System.Data.Common.DbConnection connection,
+        string whereClause,
+        CancellationToken cancellationToken)
+    {
+        var sql = $$"""
             SELECT profile.code AS Code,
                    profile.display_name AS DisplayName,
                    profile.role_name AS Role,
@@ -52,13 +143,18 @@ internal sealed class AccessProfileRepository(IDbConnectionFactory connectionFac
             FROM identity_access_profiles profile
             LEFT JOIN identity_access_profile_permissions permission
                    ON permission.access_profile_code = profile.code
-            WHERE profile.is_hr_assignable = TRUE
-              AND profile.is_active = TRUE
+            {{whereClause}}
             ORDER BY profile.display_name, permission.permission_code;
-            """,
-            cancellationToken: cancellationToken))).ToArray();
+            """;
 
-        return rows
+        return (await connection.QueryAsync<AccessProfilePermissionRow>(new CommandDefinition(
+            sql,
+            cancellationToken: cancellationToken))).ToArray();
+    }
+
+    private static IReadOnlyCollection<AccessProfile> Map(
+        IReadOnlyCollection<AccessProfilePermissionRow> rows) =>
+        rows
             .GroupBy(row => new
             {
                 row.Code,
@@ -78,7 +174,6 @@ internal sealed class AccessProfileRepository(IDbConnectionFactory connectionFac
                     .Where(permission => !string.IsNullOrWhiteSpace(permission))
                     .ToArray()))
             .ToArray();
-    }
 
     private static AccessProfile Map(
         AccessProfileRow row,

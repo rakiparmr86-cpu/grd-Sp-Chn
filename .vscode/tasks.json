@@ -2,9 +2,81 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "GRD: Debug prepare ALL backend services",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\prepare-all-vscode-debug.ps1"],
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Debug prepare ApiGateway",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\prepare-vscode-debug.ps1", "-Project", "src/backend/ApiGateway/GRD.SpChn.ApiGateway/GRD.SpChn.ApiGateway.csproj", "-Port", "7000", "-ProcessName", "GRD.SpChn.ApiGateway"],
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Debug prepare Identity",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\prepare-vscode-debug.ps1", "-Project", "src/backend/Services/Identity/GRD.SpChn.Identity.Api/GRD.SpChn.Identity.Api.csproj", "-Port", "7001", "-ProcessName", "GRD.SpChn.Identity.Api"],
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Debug prepare Notifications",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\prepare-vscode-debug.ps1", "-Project", "src/backend/Services/Notifications/GRD.SpChn.Notifications.Api/GRD.SpChn.Notifications.Api.csproj", "-Port", "7002", "-ProcessName", "GRD.SpChn.Notifications.Api"],
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Debug prepare Procurement",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\prepare-vscode-debug.ps1", "-Project", "src/backend/Services/Procurement/GRD.SpChn.Procurement.Api/GRD.SpChn.Procurement.Api.csproj", "-Port", "5112", "-ProcessName", "GRD.SpChn.Procurement.Api"],
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Debug prepare Warehouse",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\prepare-vscode-debug.ps1", "-Project", "src/backend/Services/Warehouse/GRD.SpChn.Warehouse.Api/GRD.SpChn.Warehouse.Api.csproj", "-Port", "5276", "-ProcessName", "GRD.SpChn.Warehouse.Api"],
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Debug prepare Inventory",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\prepare-vscode-debug.ps1", "-Project", "src/backend/Services/Inventory/GRD.SpChn.Inventory.Api/GRD.SpChn.Inventory.Api.csproj", "-Port", "5018", "-ProcessName", "GRD.SpChn.Inventory.Api"],
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "GRD: Debug prepare OutboxPublisher",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\prepare-vscode-debug.ps1", "-Project", "src/backend/Workers/GRD.SpChn.OutboxPublisher/GRD.SpChn.OutboxPublisher.csproj", "-ProcessName", "GRD.SpChn.OutboxPublisher"],
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
       "label": "GRD: Prepare enabled services",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": [
         "-NoProfile",
         "-File",
@@ -24,7 +96,7 @@
     {
       "label": "GRD: ApiGateway",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "ApiGateway", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -34,7 +106,7 @@
     {
       "label": "GRD: Identity",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Identity", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -44,7 +116,7 @@
     {
       "label": "GRD: Notifications",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Notifications", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -54,7 +126,7 @@
     {
       "label": "GRD: OrderManagement",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "OrderManagement", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -64,7 +136,7 @@
     {
       "label": "GRD: Inventory",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Inventory", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -74,7 +146,7 @@
     {
       "label": "GRD: Delivery",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Delivery", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -84,7 +156,7 @@
     {
       "label": "GRD: Organization",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Organization", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -94,7 +166,7 @@
     {
       "label": "GRD: Procurement",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Procurement", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -104,7 +176,7 @@
     {
       "label": "GRD: ProductCatalog",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "ProductCatalog", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -114,7 +186,7 @@
     {
       "label": "GRD: Reporting",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Reporting", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -124,7 +196,7 @@
     {
       "label": "GRD: Shipment",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Shipment", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -134,7 +206,7 @@
     {
       "label": "GRD: Supplier",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Supplier", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -144,7 +216,7 @@
     {
       "label": "GRD: Transportation",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Transportation", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -154,7 +226,7 @@
     {
       "label": "GRD: Warehouse",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Warehouse", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -164,7 +236,7 @@
     {
       "label": "GRD: OutboxPublisher",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "OutboxPublisher", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -174,7 +246,7 @@
     {
       "label": "GRD: EventProcessor",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "EventProcessor", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -184,7 +256,7 @@
     {
       "label": "GRD: ProjectionBuilder",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "ProjectionBuilder", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],
@@ -194,7 +266,7 @@
     {
       "label": "GRD: Web",
       "type": "process",
-      "command": "pwsh",
+      "command": "powershell.exe",
       "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Web", "-NoBuild", "-SkipInfrastructure"],
       "isBackground": true,
       "problemMatcher": [],

@@ -57,7 +57,7 @@ assemblies; they are not separate running processes.
 
 | Process | Port | Status | Responsibility |
 | --- | ---: | --- | --- |
-| `grd-spchn-web` | 5173 | **Partial** | React login, permission-aware ERP command center, and HR user creation. Calls backend services only through YARP. Procurement forms and operational read models remain. |
+| `grd-spchn-web` | 5173 | **Partial** | React login, permission-aware ERP command center, HR user creation, and Director access-profile permission management. Calls backend services only through YARP. Procurement forms and operational read models remain. |
 
 ### API Gateway
 
@@ -73,7 +73,7 @@ The Gateway also exposes its own `/`, `/health/live`, and `/health/ready` endpoi
 | --- | ---: | --- | --- | --- |
 | `GRD.SpChn.OrderManagement.Api` | 5255 | `/orders/{**catch-all}` | **Implemented** | Accepts orders, returns `Pending`, exposes order-status queries, consumes Inventory reservation results, and confirms/cancels Orders. |
 | `GRD.SpChn.Inventory.Api` | 5018 | `/api/inventory/{**catch-all}` | **Implemented** | Handles the sales-order reservation flow and consumes Warehouse GRNs to maintain location/product stock. |
-| `GRD.SpChn.Identity.Api` | 7001 | `/api/identity/{**catch-all}` | **Partial** | Authenticates PBKDF2-backed users; resolves role and permissions from database-owned access-profile tables; issues organization/role/permission JWTs; and lets authorized HR Managers create operational users. Refresh, revocation, audit and production key management remain. |
+| `GRD.SpChn.Identity.Api` | 7001 | `/api/identity/{**catch-all}` | **Partial** | Authenticates PBKDF2-backed users; resolves role and permissions from database-owned access-profile tables; issues organization/role/permission JWTs; lets authorized HR Managers create operational users; and lets Directors atomically manage profile permissions from a validated catalog. Refresh, revocation, audit and production key management remain. |
 | `GRD.SpChn.Notifications.Api` | 7002 | `/api/notifications/{**catch-all}` | **Partial** | Has health/sample endpoints. Email, SMS, templates, delivery status, and event consumers are not implemented. |
 | `GRD.SpChn.ProductCatalog.Api` | 5006 | `/api/products/{**catch-all}` | **Scaffold** | Intended to own product definitions, attributes, and catalog queries; currently only template behavior exists. |
 | `GRD.SpChn.Shipment.Api` | 5059 | `/api/shipments/{**catch-all}` | **Scaffold** | Intended to own shipment planning and shipment state; currently only template behavior exists. |

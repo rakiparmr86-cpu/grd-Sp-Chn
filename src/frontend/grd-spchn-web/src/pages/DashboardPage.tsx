@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { LoginResponse } from '../api'
 import { hasPermission } from '../auth'
 import { Brand, GridIcon } from '../components/Brand'
+import { AccessProfilePermissionsPanel } from '../components/AccessProfilePermissionsPanel'
 import { CreateUserPanel } from '../components/CreateUserPanel'
 
 interface DashboardPageProps {
@@ -27,8 +28,10 @@ const permissionActions = [
 
 export function DashboardPage({ session, onSignOut }: DashboardPageProps) {
   const [createUserOpen, setCreateUserOpen] = useState(false)
+  const [permissionEditorOpen, setPermissionEditorOpen] = useState(false)
   const [now, setNow] = useState(() => new Date())
   const canCreateUsers = hasPermission(session, 'identity.user.create')
+  const canManagePermissions = hasPermission(session, 'identity.access-profile.manage')
   const actions = permissionActions.filter((action) => hasPermission(session, action.permission))
 
   useEffect(() => {
@@ -130,7 +133,14 @@ export function DashboardPage({ session, onSignOut }: DashboardPageProps) {
                   <button type="button" onClick={() => setCreateUserOpen(true)} aria-label="Create employee user">→</button>
                 </article>
               )}
-              {actions.length === 0 && !canCreateUsers && (
+              {canManagePermissions && (
+                <article className="action-card action-card--navy">
+                  <span className="action-card__icon">⚿</span>
+                  <span><strong>Manage access permissions</strong><small>Add or remove access for backend-owned job profiles</small></span>
+                  <button type="button" onClick={() => setPermissionEditorOpen(true)} aria-label="Manage access permissions">→</button>
+                </article>
+              )}
+              {actions.length === 0 && !canCreateUsers && !canManagePermissions && (
                 <div className="empty-card">No command actions are assigned to this profile yet.</div>
               )}
             </div>
@@ -152,6 +162,12 @@ export function DashboardPage({ session, onSignOut }: DashboardPageProps) {
 
       {createUserOpen && (
         <CreateUserPanel accessToken={session.accessToken} onClose={() => setCreateUserOpen(false)} />
+      )}
+      {permissionEditorOpen && (
+        <AccessProfilePermissionsPanel
+          accessToken={session.accessToken}
+          onClose={() => setPermissionEditorOpen(false)}
+        />
       )}
     </div>
   )

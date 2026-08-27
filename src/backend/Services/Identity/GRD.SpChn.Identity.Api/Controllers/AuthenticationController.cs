@@ -13,9 +13,7 @@ public sealed class AuthenticationController(ISender sender) : ControllerBase
     [HttpPost("login")]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Login(
-        [FromBody] LoginRequest request,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request,CancellationToken cancellationToken)
     {
         var result = await sender.Send(
             new LoginCommand(request.UserName, request.Password),
