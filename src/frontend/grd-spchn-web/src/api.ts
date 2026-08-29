@@ -55,6 +55,34 @@ export interface CreatedUser {
   isActive: boolean
 }
 
+export interface MaterialRequestItemInput {
+  productId: string
+  quantity: number
+  unitOfMeasure: string
+}
+
+export interface CreateMaterialRequestRequest {
+  purpose: string
+  items: MaterialRequestItemInput[]
+}
+
+export type MaterialRequestItem = MaterialRequestItemInput
+
+export interface MaterialRequest {
+  id: string
+  requestNumber: string
+  requestingOrganizationUnitId: string
+  destinationOrganizationUnitId: string
+  requestedByUserId: string
+  purpose: string
+  status: string
+  items: MaterialRequestItem[]
+  approvedByUserId: string | null
+  purchaseOrderId: string | null
+  createdOnUtc: string
+  updatedOnUtc: string
+}
+
 interface ProblemDetails {
   title?: string
   detail?: string
@@ -150,6 +178,16 @@ export const api = {
   createUser: (accessToken: string, payload: CreateUserRequest) =>
     request<CreatedUser>(
       '/api/identity/users',
+      { method: 'POST', body: JSON.stringify(payload) },
+      accessToken,
+    ),
+
+  createMaterialRequest: (
+    accessToken: string,
+    payload: CreateMaterialRequestRequest,
+  ) =>
+    request<MaterialRequest>(
+      '/api/procurement/material-requests',
       { method: 'POST', body: JSON.stringify(payload) },
       accessToken,
     ),

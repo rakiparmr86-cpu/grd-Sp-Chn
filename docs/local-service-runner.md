@@ -82,6 +82,10 @@ the recommended **C# Dev Kit** and **C#** extensions when VS Code offers them.
 The PowerShell extension is useful for debugging the helper scripts, but it is not
 required to debug a .NET API.
 
+For the complete F5 execution chain and explanations of containers, SQL
+initialization, PowerShell scripts, Outbox workers, smoke tests, and debugger restart
+behavior, see [Understanding the GRD VS Code F5 startup flow](vscode-f5-debug-flow.md).
+
 ### A service is already running
 
 Use this approach when the services were started with `GRD: Start enabled services`:

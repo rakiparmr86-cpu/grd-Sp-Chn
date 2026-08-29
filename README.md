@@ -75,6 +75,12 @@ For the complete commands, port table, environment overrides, and explanation of
 Windows executable locks, see
 [`docs/local-service-runner.md`](docs/local-service-runner.md).
 
+For a step-by-step mental model of what VS Code does after pressing **F5**—including
+the compound profile, pre-launch PowerShell tasks, Docker containers, SQL
+initialization, backend processes, Outbox workers, smoke tests, restart behavior,
+and timeout troubleshooting—see
+[`docs/vscode-f5-debug-flow.md`](docs/vscode-f5-debug-flow.md).
+
 ## 1. Start MySQL and RabbitMQ
 
 Create the local Docker environment file:
