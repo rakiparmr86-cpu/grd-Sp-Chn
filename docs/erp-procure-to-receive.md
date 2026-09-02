@@ -96,16 +96,33 @@ user/permission APIs.
 | Read hierarchy | `GET /api/organization/units` | `organization.read` |
 | Create hierarchy node | `POST /api/organization/units` | `organization.manage` |
 | Create request | `POST /api/procurement/material-requests` | `procurement.material-request.create` |
+| List requests and PO/dispatch progress | `GET /api/procurement/material-requests` | `procurement.material-request.read` |
 | Read request | `GET /api/procurement/material-requests/{id}` | `procurement.material-request.read` |
 | Approve request | `POST /api/procurement/material-requests/{id}/approve` | `procurement.material-request.approve` |
 | Issue PO | `POST /api/procurement/material-requests/{id}/purchase-orders` | `procurement.purchase-order.create` |
+| Record material dispatch | `POST /api/procurement/purchase-orders/{id}/dispatch` | `procurement.purchase-order.create` |
 | Read PO | `GET /api/procurement/purchase-orders/{id}` | `procurement.purchase-order.read` |
+| List active suppliers | `GET /api/suppliers/catalog` | `supplier.read` |
 | View expected PO | `GET /api/warehouses/purchase-orders/{id}` | `warehouse.goods-receipt.read` |
 | Post GRN | `POST /api/warehouses/purchase-orders/{id}/goods-receipts` | `warehouse.goods-receipt.post` |
 | Read location stock | `GET /api/inventory/stock/locations/{organizationUnitId}/{productId}` | `inventory.stock.read` |
 
 The API derives the current `userId` and `organizationUnitId` from the validated JWT.
 The browser is never allowed to submit those security-sensitive identities.
+
+## Supplier master
+
+The Supplier service owns `supplier_master`; Procurement stores only the selected
+supplier ID on a purchase order. The master is designed for later maintenance APIs
+and contains stable code, legal/display name, tax identifier, email, phone, postal
+address, country, payment terms, default currency, lifecycle status, active flag,
+and audit timestamps.
+
+Migration `007_supplier_master.sql` seeds four fictional local-development suppliers:
+Abacus, GRD, AU, and IDFC. They are test records, not verified real-world vendor
+identities. Purchase Manager and Regional General Manager receive `supplier.read`;
+Director receives `supplier.read` and `supplier.manage`. The PO screen loads only
+active suppliers through the Gateway instead of keeping supplier IDs in React.
 
 ## Local setup
 
@@ -164,3 +181,44 @@ Before thousands-user production usage, add hierarchical access-scope grants,
 approval delegation, optimistic version columns, audit history, distributed tracing,
 rate limiting, production secret/key management, database-per-service deployment,
 RabbitMQ high availability and realistic concurrency/load tests.
+
+## Requisition activity email notifications
+
+The requisition screen lists the request status, whether a purchase order exists,
+and whether material has been dispatched. These values come from Procurement through
+`GET /api/procurement/material-requests`; the browser does not manufacture workflow
+status locally.
+
+Every local Identity user has a durable `email` value ending in `@yopmail.com`. The
+address is assigned by Identity and is not selected on the login screen. Procurement
+writes an `ActivityNotificationRequestedIntegrationEvent` to its Outbox in the same
+transaction as each supported workflow action:
+
+- material request created;
+- material request approved;
+- purchase order issued;
+- material dispatched; and
+- goods receipt processed.
+
+The Outbox Publisher sends the event to RabbitMQ. Notifications resolves the direct
+users and permission-based recipients, then inserts idempotent rows into
+`notification_email_deliveries`. Its background worker sends pending rows and records
+`Pending`, `Sending`, `Sent`, or `Failed` status and retry details.
+
+Yopmail is the recipient inbox domain; it is not the application's SMTP relay. To
+send real email, copy the SMTP settings from `deploy/docker/.env.example` into the
+untracked `deploy/docker/.env`, supply credentials for an SMTP provider, and set:
+
+```dotenv
+SMTP_ENABLED=true
+SMTP_HOST=your-smtp-host
+SMTP_PORT=587
+SMTP_ENABLE_SSL=true
+SMTP_USERNAME=your-smtp-user
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM_ADDRESS=notifications@your-domain.example
+SMTP_FROM_NAME=GRD Supply Chain
+```
+
+When SMTP is disabled, activity rows remain safely queued; the application does not
+pretend they were delivered. Restart Notifications after changing these values.

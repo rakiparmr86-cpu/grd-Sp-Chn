@@ -1,11 +1,13 @@
 using GRD.SpChn.Procurement.Application.Abstractions;
+using GRD.SpChn.Contracts.IntegrationEvents;
 
 namespace GRD.SpChn.Procurement.Application.PurchaseOrders;
 
 public sealed class ProcurementProcessManager(
     IUnitOfWork unitOfWork,
     IInboxStore inboxStore,
-    IProcurementRepository repository)
+    IProcurementRepository repository,
+    IOutboxWriter outboxWriter)
 {
     public Task ProcessGoodsReceiptAsync(
         Guid eventId,
@@ -36,6 +38,18 @@ public sealed class ProcurementProcessManager(
                 materialRequest.MarkReceived();
                 await repository.UpdatePurchaseOrderAsync(purchaseOrder, transactionCancellationToken);
                 await repository.UpdateMaterialRequestAsync(materialRequest, transactionCancellationToken);
+                await outboxWriter.AddAsync(
+                    new ActivityNotificationRequestedIntegrationEvent(
+                        "warehouse.goods-receipt.posted",
+                        "MaterialRequest",
+                        materialRequest.Id,
+                        $"Material received for {materialRequest.RequestNumber}",
+                        $"Goods were received against purchase order {purchaseOrder.PurchaseOrderNumber}. The requisition is complete.",
+                        [materialRequest.RequestedByUserId],
+                        ["procurement.purchase-order.read"]),
+                    MessagingTopology.NotificationExchange,
+                    MessagingTopology.NotificationRequestedRoutingKey,
+                    transactionCancellationToken);
                 return true;
             },
             cancellationToken);

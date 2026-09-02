@@ -12,7 +12,7 @@ F5
   -> VS Code reads .vscode/launch.json
   -> the compound profile requests one pre-launch task
   -> .vscode/tasks.json starts PowerShell
-  -> prepare-all-vscode-debug.ps1 checks for process/port conflicts
+  -> prepare-all-vscode-debug.ps1 safely stops stale processes from this repository
   -> start-local-services.ps1 -BuildOnly starts Docker and builds projects
   -> Docker Compose starts/reuses MySQL and RabbitMQ
   -> the pre-launch task finishes
@@ -29,10 +29,11 @@ separately when it is needed.
 | --- | --- | --- |
 | 1 | `.vscode/launch.json` | Defines the compound profile and every .NET debugger target. |
 | 2 | `.vscode/tasks.json` | Defines the pre-launch task and starts `powershell.exe`. |
-| 3 | `scripts/prepare-all-vscode-debug.ps1` | Checks that API ports and worker process names are free. |
-| 4 | `scripts/start-local-services.ps1` | Loads local settings, starts infrastructure, and builds enabled projects. |
-| 5 | `deploy/docker/compose.infrastructure.yml` | Defines MySQL, RabbitMQ, their ports, health checks, networks, and volumes. |
-| 6 | Each API/worker `Program.cs` | Starts that process and registers its application and infrastructure dependencies. |
+| 3 | `scripts/prepare-all-vscode-debug.ps1` | Stops stale GRD processes owned by this repository and protects unrelated processes. |
+| 4 | `scripts/local-debug-processes.ps1` | Performs repository ownership checks, deduplication, stopping, and port-release verification. |
+| 5 | `scripts/start-local-services.ps1` | Loads local settings, starts infrastructure, and builds enabled projects. |
+| 6 | `deploy/docker/compose.infrastructure.yml` | Defines MySQL, RabbitMQ, their ports, health checks, networks, and volumes. |
+| 7 | Each API/worker `Program.cs` | Starts that process and registers its application and infrastructure dependencies. |
 
 These files cooperate, but they do not all launch processes. The PowerShell
 preparation builds the targets; VS Code itself launches the targets under the
@@ -79,7 +80,7 @@ not contain the ERP business rules.
 The VS Code PowerShell extension is optional for this startup. Windows
 `powershell.exe` can execute the scripts without the extension.
 
-### Step 3 - Existing process conflicts are rejected
+### Step 3 - Existing GRD processes are safely restarted
 
 `scripts/prepare-all-vscode-debug.ps1` checks:
 
@@ -88,12 +89,17 @@ The VS Code PowerShell extension is optional for this startup. Windows
 - the EventProcessor process name;
 - the ProjectionBuilder process name.
 
-If a service is already running, preparation stops instead of launching a second
-copy. This prevents two different problems:
+`scripts/local-debug-processes.ps1` resolves every listener to a process and verifies
+its executable path or `dotnet` command line. When it belongs to this repository,
+the stale process is stopped once (IPv4 and IPv6 listeners are deduplicated) and the
+script waits for its port to be released. This prevents two different problems:
 
 1. two processes cannot listen on the same HTTP port;
 2. Windows may lock a running project's generated `.exe` and DLL files, preventing
    the build from replacing them.
+
+If the owner belongs to another repository or is an unrelated application, the
+script does not kill it. Preparation stops and reports its port and PID instead.
 
 ### Step 4 - The central runner is called in BuildOnly mode
 
@@ -304,8 +310,10 @@ in `grd_local` and do not automatically clean those rows afterward.
 | `start-local-services.ps1` without arguments | PowerShell separate consoles | No | Yes when enabled |
 | Attach profile | Existing process remains owner | Yes, selected process | Separate browser profile for React |
 
-Do not use the normal runner and compound F5 for the same service simultaneously.
-That creates duplicate-port and executable-lock conflicts.
+When compound F5 is used after the normal runner, the pre-launch task stops the
+copies owned by this repository before rebuilding them under the debugger. This is
+intentional; use the attach profile instead when those existing processes must remain
+running.
 
 ## 8. Stopping and restarting
 
@@ -399,4 +407,3 @@ Use these files when behavior changes:
 - `deploy/docker/.env` - local infrastructure ports and credentials;
 - `deploy/docker/compose.infrastructure.yml` - container definitions and health checks;
 - `docs/local-service-runner.md` - command-oriented local runner reference.
-

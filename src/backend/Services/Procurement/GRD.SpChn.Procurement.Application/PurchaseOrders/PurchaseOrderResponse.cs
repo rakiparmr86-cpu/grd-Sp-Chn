@@ -12,6 +12,7 @@ public sealed record PurchaseOrderResponse(
     string Status,
     IReadOnlyCollection<PurchaseOrderItemResponse> Items,
     DateTime IssuedOnUtc,
+    DateTime? DispatchedOnUtc,
     DateTime UpdatedOnUtc)
 {
     public static PurchaseOrderResponse From(PurchaseOrder order) =>
@@ -29,6 +30,7 @@ public sealed record PurchaseOrderResponse(
                 item.UnitOfMeasure,
                 item.UnitPrice)).ToArray(),
             order.IssuedOnUtc,
+            order.DispatchedOnUtc,
             order.UpdatedOnUtc);
 }
 

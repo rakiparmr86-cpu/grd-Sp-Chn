@@ -13,6 +13,7 @@ public sealed record CreateUserCommand(
 public sealed record CreateUserResponse(
     Guid UserId,
     string UserName,
+    string Email,
     string Role,
     string AccessProfile,
     Guid OrganizationUnitId,

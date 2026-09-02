@@ -22,4 +22,21 @@ public sealed class PurchaseOrdersController(ISender sender) : ControllerBase
                 title: result.FirstError.Code,
                 detail: result.FirstError.Description);
     }
+
+    [Authorize(Policy = ErpPolicies.PurchaseOrderCreate)]
+    [HttpPost("{id:guid}/dispatch")]
+    public async Task<IActionResult> MarkDispatched(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new MarkPurchaseOrderDispatchedCommand(
+            id,
+            User.GetRequiredUserId()), cancellationToken);
+        return result.IsSuccess
+            ? Ok(result.Value)
+            : Problem(
+                statusCode: result.FirstError.Type == GRD.SpChn.SharedKernel.ErrorType.NotFound
+                    ? StatusCodes.Status404NotFound
+                    : StatusCodes.Status409Conflict,
+                title: result.FirstError.Code,
+                detail: result.FirstError.Description);
+    }
 }

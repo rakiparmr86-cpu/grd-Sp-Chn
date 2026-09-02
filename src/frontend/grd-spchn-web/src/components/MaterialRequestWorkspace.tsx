@@ -4,8 +4,11 @@ import {
   ApiError,
   type LoginResponse,
   type MaterialRequest,
+  type MaterialRequestListItem,
   type OrganizationUnit,
 } from '../api'
+import { hasPermission } from '../auth'
+import { PurchaseOrderPanel } from './PurchaseOrderPanel'
 
 interface MaterialRequestWorkspaceProps {
   session: LoginResponse
@@ -57,6 +60,15 @@ export function MaterialRequestWorkspace({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [created, setCreated] = useState<MaterialRequest | null>(null)
+  const [requests, setRequests] = useState<MaterialRequestListItem[]>([])
+  const [listLoading, setListLoading] = useState(true)
+  const [listError, setListError] = useState('')
+  const canCreateRequest = hasPermission(session, 'procurement.material-request.create')
+  const canApproveRequest = hasPermission(session, 'procurement.material-request.approve')
+  const canCreatePurchaseOrder = hasPermission(session, 'procurement.purchase-order.create')
+  const [actingRequestId, setActingRequestId] = useState<string | null>(null)
+  const [purchaseOrderRequestId, setPurchaseOrderRequestId] = useState<string | null>(null)
+  const [workflowMessage, setWorkflowMessage] = useState('')
 
   useEffect(() => {
     let active = true
@@ -66,6 +78,19 @@ export function MaterialRequestWorkspace({
       })
       .catch(() => {
         // The authenticated organization id remains authoritative if names cannot be loaded.
+      })
+    api.listMaterialRequests(session.accessToken)
+      .then((items) => {
+        if (active) setRequests(items)
+      })
+      .catch((reason: unknown) => {
+        if (!active) return
+        setListError(reason instanceof ApiError
+          ? reason.message
+          : 'Could not load requisitions.')
+      })
+      .finally(() => {
+        if (active) setListLoading(false)
       })
 
     return () => {
@@ -113,6 +138,20 @@ export function MaterialRequestWorkspace({
     setCreated(null)
   }
 
+  async function refreshRequests() {
+    setListLoading(true)
+    setListError('')
+    try {
+      setRequests(await api.listMaterialRequests(session.accessToken))
+    } catch (reason) {
+      setListError(reason instanceof ApiError
+        ? reason.message
+        : 'Could not load requisitions.')
+    } finally {
+      setListLoading(false)
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
@@ -140,6 +179,7 @@ export function MaterialRequestWorkspace({
         })),
       })
       setCreated(result)
+      await refreshRequests()
     } catch (reason) {
       setError(reason instanceof ApiError
         ? reason.message
@@ -149,17 +189,43 @@ export function MaterialRequestWorkspace({
     }
   }
 
+  async function approveRequest(request: MaterialRequestListItem) {
+    setActingRequestId(request.id)
+    setListError('')
+    setWorkflowMessage('')
+    try {
+      const approved = await api.approveMaterialRequest(session.accessToken, request.id)
+      setWorkflowMessage(`${approved.requestNumber} was approved and is ready for a purchase order.`)
+      await refreshRequests()
+    } catch (reason) {
+      setListError(reason instanceof ApiError
+        ? reason.message
+        : 'The requisition could not be approved.')
+    } finally {
+      setActingRequestId(null)
+    }
+  }
+
   return (
     <section className="requisition-workspace" aria-labelledby="material-request-title">
       <header className="workspace-title">
         <div>
           <button className="workspace-back" type="button" onClick={onBack}>← Dashboard</button>
-          <h1 id="material-request-title">GRD M. Requisition</h1>
-          <p>Raise a plant requirement for review by the Purchase Department.</p>
+          <h1 id="material-request-title">
+            {canCreateRequest ? 'GRD M. Requisition' : 'Material requisitions'}
+          </h1>
+          <p>
+            {canCreateRequest
+              ? 'Raise a plant requirement for review by the Purchase Department.'
+              : 'Review plant and branch requirements sent to the Purchase Department.'}
+          </p>
         </div>
-        <span className="workspace-status"><i /> New request</span>
+        <span className="workspace-status">
+          <i /> {canCreateRequest ? 'New request' : 'Purchase review'}
+        </span>
       </header>
 
+      {canCreateRequest && (
       <form className="requisition-card" onSubmit={handleSubmit}>
         <div className="requisition-card__heading">
           <div>
@@ -294,27 +360,125 @@ export function MaterialRequestWorkspace({
           </button>
         </div>
       </form>
+      )}
 
-      <section className="requisition-snapshot" aria-label="Requisition workflow">
-        <div className="snapshot-heading">
-          <strong>Requisition workflow</strong>
-          <span>The Purchase Department receives the request after submission.</span>
+      <section className="requisition-list-card" aria-labelledby="requisition-list-title">
+        <div className="requisition-list-heading">
+          <div>
+            <strong id="requisition-list-title">Requisition list</strong>
+            <span>Track approval, purchase order, and material dispatch.</span>
+          </div>
+          <button type="button" onClick={refreshRequests} disabled={listLoading}>
+            {listLoading ? 'Refreshing…' : '↻ Refresh'}
+          </button>
         </div>
-        <div className="snapshot-grid">
-          <article>
-            <span className="snapshot-number">1</span>
-            <div><small>Raised by</small><strong>Plant Supervisor</strong></div>
-          </article>
-          <article>
-            <span className="snapshot-number">2</span>
-            <div><small>Next owner</small><strong>Purchase Department</strong></div>
-          </article>
-          <article>
-            <span className={created ? 'snapshot-number is-complete' : 'snapshot-number'}>3</span>
-            <div><small>Current status</small><strong>{created?.status ?? 'Draft'}</strong></div>
-          </article>
-        </div>
+
+        {listError && <div className="form-alert requisition-list-alert" role="alert">{listError}</div>}
+        {workflowMessage && (
+          <div className="success-alert requisition-list-alert" role="status">{workflowMessage}</div>
+        )}
+        {listLoading && requests.length === 0 ? (
+          <div className="requisition-list-empty"><span className="spinner spinner--dark" /> Loading requisitions…</div>
+        ) : requests.length === 0 ? (
+          <div className="requisition-list-empty">
+            {canCreateRequest
+              ? 'No requisitions have been submitted from this location.'
+              : 'No requisitions are available in your organization scope.'}
+          </div>
+        ) : (
+          <div className="requisition-table-scroll">
+            <table className="requisition-table">
+              <thead>
+                <tr>
+                  <th>Requisition</th>
+                  <th>Purpose</th>
+                  <th>Request status</th>
+                  <th>Purchase order</th>
+                  <th>Material dispatch</th>
+                  <th>Created</th>
+                  {(canApproveRequest || canCreatePurchaseOrder) && <th>Action</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((request) => (
+                  <tr key={request.id}>
+                    <td>
+                      <strong>{request.requestNumber}</strong>
+                      <small>{request.itemCount} material{request.itemCount === 1 ? '' : 's'}</small>
+                    </td>
+                    <td className="requisition-purpose-cell" title={request.purpose}>{request.purpose}</td>
+                    <td><span className={`tracking-status tracking-status--${request.status.toLowerCase()}`}>{request.status}</span></td>
+                    <td>
+                      {request.purchaseOrderCreated ? (
+                        <span className="tracking-answer is-yes">
+                          <i /> Yes<small>{request.purchaseOrderNumber}</small>
+                        </span>
+                      ) : (
+                        <span className="tracking-answer is-no"><i /> Not created</span>
+                      )}
+                    </td>
+                    <td>
+                      {request.materialDispatched ? (
+                        <span className="tracking-answer is-yes">
+                          <i /> Dispatched
+                          {request.dispatchedOnUtc && <small>{new Date(request.dispatchedOnUtc).toLocaleDateString('en-IN')}</small>}
+                        </span>
+                      ) : (
+                        <span className="tracking-answer is-waiting"><i /> Not dispatched</span>
+                      )}
+                    </td>
+                    <td>{new Date(request.createdOnUtc).toLocaleDateString('en-IN')}</td>
+                    {(canApproveRequest || canCreatePurchaseOrder) && (
+                      <td className="requisition-action-cell">
+                        {request.status === 'Submitted' && canApproveRequest ? (
+                          <button
+                            className="table-action-button"
+                            type="button"
+                            onClick={() => approveRequest(request)}
+                            disabled={actingRequestId === request.id}
+                          >
+                            {actingRequestId === request.id ? 'Approving…' : 'Approve'}
+                          </button>
+                        ) : request.status === 'Approved' && canCreatePurchaseOrder ? (
+                          <button
+                            className="table-action-button table-action-button--primary"
+                            type="button"
+                            onClick={() => {
+                              setWorkflowMessage('')
+                              setPurchaseOrderRequestId(request.id)
+                            }}
+                          >
+                            Create PO
+                          </button>
+                        ) : (
+                          <span className="table-action-complete">
+                            {request.purchaseOrderCreated ? 'PO created' : 'No action'}
+                          </span>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
+
+      {purchaseOrderRequestId && (
+        <PurchaseOrderPanel
+          accessToken={session.accessToken}
+          materialRequestId={purchaseOrderRequestId}
+          onClose={() => setPurchaseOrderRequestId(null)}
+          onCreated={(purchaseOrder) => {
+            setPurchaseOrderRequestId(null)
+            setWorkflowMessage(
+              `${purchaseOrder.purchaseOrderNumber} was created and sent to the receiving workflow.`,
+            )
+            void refreshRequests()
+          }}
+        />
+      )}
     </section>
   )
 }

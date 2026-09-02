@@ -27,31 +27,13 @@ $workerProcessNames = @(
     "GRD.SpChn.ProjectionBuilder"
 )
 
-$conflicts = [System.Collections.Generic.List[string]]::new()
-foreach ($entry in $servicePorts.GetEnumerator()) {
-    $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $entry.Value -ErrorAction SilentlyContinue)
-    foreach ($listener in $listeners) {
-        $process = Get-Process -Id $listener.OwningProcess -ErrorAction SilentlyContinue
-        $owner = if ($null -eq $process) {
-            "PID $($listener.OwningProcess)"
-        }
-        else {
-            "$($process.ProcessName) (PID $($listener.OwningProcess))"
-        }
-        $conflicts.Add("$($entry.Key) port $($entry.Value): $owner")
-    }
-}
+. (Join-Path $PSScriptRoot "local-debug-processes.ps1")
 
-foreach ($processName in $workerProcessNames) {
-    foreach ($process in @(Get-Process -Name $processName -ErrorAction SilentlyContinue)) {
-        $conflicts.Add("$processName worker: PID $($process.Id)")
-    }
-}
-
-if ($conflicts.Count -gt 0) {
-    $details = $conflicts -join [Environment]::NewLine
-    throw "One or more GRD services are already running. Stop them before using the all-services debug profile, or attach to them instead:$([Environment]::NewLine)$details"
-}
+Stop-GrdWorkspaceProcessesForDebug `
+    -RepositoryRoot $repositoryRoot `
+    -ServicePorts $servicePorts `
+    -ProcessNames $workerProcessNames `
+    -IncludeAllWorkspaceProcesses
 
 Write-Host "Preparing every enabled GRD service for multi-target debugging..." -ForegroundColor Cyan
 & (Join-Path $PSScriptRoot "start-local-services.ps1") -BuildOnly

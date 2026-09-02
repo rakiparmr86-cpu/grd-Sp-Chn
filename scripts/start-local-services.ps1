@@ -73,6 +73,7 @@ function Set-DefaultEnvironmentVariable {
         [string]$Name,
 
         [Parameter(Mandatory)]
+        [AllowEmptyString()]
         [string]$Value
     )
 
@@ -84,7 +85,7 @@ function Set-DefaultEnvironmentVariable {
 function Get-LocalInfrastructureSetting {
     param(
         [Parameter(Mandatory)][string]$Name,
-        [Parameter(Mandatory)][string]$DefaultValue
+        [Parameter(Mandatory)][AllowEmptyString()][string]$DefaultValue
     )
 
     $processValue = [Environment]::GetEnvironmentVariable($Name)
@@ -108,6 +109,14 @@ function Initialize-LocalEnvironment {
     $rabbitMqUser = Get-LocalInfrastructureSetting "RABBITMQ_USER" "grd"
     $rabbitMqPassword = Get-LocalInfrastructureSetting "RABBITMQ_PASSWORD" "grd-local"
     $rabbitMqPort = Get-LocalInfrastructureSetting "RABBITMQ_PORT" "5672"
+    $smtpEnabled = Get-LocalInfrastructureSetting "SMTP_ENABLED" "false"
+    $smtpHost = Get-LocalInfrastructureSetting "SMTP_HOST" ""
+    $smtpPort = Get-LocalInfrastructureSetting "SMTP_PORT" "587"
+    $smtpEnableSsl = Get-LocalInfrastructureSetting "SMTP_ENABLE_SSL" "true"
+    $smtpUserName = Get-LocalInfrastructureSetting "SMTP_USERNAME" ""
+    $smtpPassword = Get-LocalInfrastructureSetting "SMTP_PASSWORD" ""
+    $smtpFromAddress = Get-LocalInfrastructureSetting "SMTP_FROM_ADDRESS" "notifications@grd.local"
+    $smtpFromName = Get-LocalInfrastructureSetting "SMTP_FROM_NAME" "GRD Supply Chain"
     $databaseConnection = "Server=localhost;Port=$mysqlPort;Database=$mysqlDatabase;User ID=$mysqlUser;Password=$mysqlPassword;SslMode=None"
 
     Set-DefaultEnvironmentVariable "ASPNETCORE_ENVIRONMENT" "Development"
@@ -121,6 +130,14 @@ function Initialize-LocalEnvironment {
     Set-DefaultEnvironmentVariable "RabbitMq__Port" $rabbitMqPort
     Set-DefaultEnvironmentVariable "RabbitMq__UserName" $rabbitMqUser
     Set-DefaultEnvironmentVariable "RabbitMq__Password" $rabbitMqPassword
+    Set-DefaultEnvironmentVariable "Smtp__Enabled" $smtpEnabled
+    Set-DefaultEnvironmentVariable "Smtp__Host" $smtpHost
+    Set-DefaultEnvironmentVariable "Smtp__Port" $smtpPort
+    Set-DefaultEnvironmentVariable "Smtp__EnableSsl" $smtpEnableSsl
+    Set-DefaultEnvironmentVariable "Smtp__UserName" $smtpUserName
+    Set-DefaultEnvironmentVariable "Smtp__Password" $smtpPassword
+    Set-DefaultEnvironmentVariable "Smtp__FromAddress" $smtpFromAddress
+    Set-DefaultEnvironmentVariable "Smtp__FromName" $smtpFromName
 }
 
 function Get-EnabledServices {
@@ -181,10 +198,17 @@ function Start-LocalInfrastructure {
         "-f",
         (Join-Path $repositoryRoot "deploy/docker/compose.infrastructure.yml"),
         "up",
-        "-d")
+        "-d",
+        "--wait")
     & docker @composeArguments
     if ($LASTEXITCODE -ne 0) {
         throw "Docker infrastructure failed to start."
+    }
+
+    Write-Host "Applying idempotent local database migrations..." -ForegroundColor Cyan
+    & (Join-Path $PSScriptRoot "apply-local-identity-seed.ps1")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Local database migrations failed."
     }
 }
 

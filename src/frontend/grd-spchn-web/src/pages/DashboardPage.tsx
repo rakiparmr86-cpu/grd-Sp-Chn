@@ -12,7 +12,11 @@ interface DashboardPageProps {
   onSignOut: () => void
 }
 
-type MenuAction = 'create-user' | 'manage-permissions' | 'create-material-request'
+type MenuAction =
+  | 'create-user'
+  | 'manage-permissions'
+  | 'create-material-request'
+  | 'view-material-requests'
 type DashboardView = 'dashboard' | 'material-request'
 type MenuIconName = 'identity' | 'organization' | 'procurement' | 'inventory' | 'warehouse'
 
@@ -78,16 +82,19 @@ const moreMenuGroups: MoreMenuGroup[] = [
         permission: 'procurement.material-request.read',
         label: 'View material requests',
         description: 'Review requests available in your organization scope.',
+        action: 'view-material-requests',
       },
       {
         permission: 'procurement.material-request.approve',
         label: 'Approve material requests',
         description: 'Approve or reject submitted requirements.',
+        action: 'view-material-requests',
       },
       {
         permission: 'procurement.purchase-order.create',
-        label: 'Create purchase order',
+        label: 'Create PO.',
         description: 'Create a supplier PO from an approved request.',
+        action: 'view-material-requests',
       },
       {
         permission: 'procurement.purchase-order.read',
@@ -235,7 +242,9 @@ export function DashboardPage({ session, onSignOut }: DashboardPageProps) {
     setMoreOpen(false)
     if (action === 'create-user') setCreateUserOpen(true)
     if (action === 'manage-permissions') setPermissionEditorOpen(true)
-    if (action === 'create-material-request') setActiveView('material-request')
+    if (action === 'create-material-request' || action === 'view-material-requests') {
+      setActiveView('material-request')
+    }
   }
 
   return (

@@ -16,31 +16,23 @@ $projectPath = Join-Path $repositoryRoot $Project
 $dockerEnvironmentFile = Join-Path $repositoryRoot "deploy/docker/.env"
 $composeFile = Join-Path $repositoryRoot "deploy/docker/compose.infrastructure.yml"
 
+. (Join-Path $PSScriptRoot "local-debug-processes.ps1")
+
 if (-not (Test-Path -LiteralPath $projectPath -PathType Leaf)) {
     throw "Debug project does not exist: $projectPath"
 }
 
-if ($Port -gt 0) {
-    $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
-    if ($listeners.Count -gt 0) {
-        $owners = $listeners |
-            Select-Object -ExpandProperty OwningProcess -Unique |
-            ForEach-Object {
-                $process = Get-Process -Id $_ -ErrorAction SilentlyContinue
-                if ($null -eq $process) { "PID $_" } else { "$($process.ProcessName) (PID $($_))" }
-            }
-
-        throw "Port $Port is already in use by $($owners -join ', '). Stop that service before launching it again, or select 'GRD: Attach to a running .NET service' in VS Code."
-    }
-}
-
+$targetPorts = @{}
+if ($Port -gt 0) { $targetPorts["Debug target"] = $Port }
+$targetProcessNames = @()
 if (-not [string]::IsNullOrWhiteSpace($ProcessName)) {
-    $runningProcesses = @(Get-Process -Name $ProcessName -ErrorAction SilentlyContinue)
-    if ($runningProcesses.Count -gt 0) {
-        $processIds = ($runningProcesses.Id | Sort-Object -Unique) -join ", "
-        throw "$ProcessName is already running (PID: $processIds). Stop it before rebuilding, or attach the VS Code debugger to the running process."
-    }
+    $targetProcessNames = @($ProcessName)
 }
+
+Stop-GrdWorkspaceProcessesForDebug `
+    -RepositoryRoot $repositoryRoot `
+    -ServicePorts $targetPorts `
+    -ProcessNames $targetProcessNames
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     throw "Docker was not found. Start Docker Desktop before debugging services that use MySQL or RabbitMQ."

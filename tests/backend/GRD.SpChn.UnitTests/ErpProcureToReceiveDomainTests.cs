@@ -75,6 +75,32 @@ public sealed class ErpProcureToReceiveDomainTests
     }
 
     [Fact]
+    public void Issued_purchase_order_records_material_dispatch_before_receipt()
+    {
+        var productId = Guid.NewGuid();
+        var request = MaterialRequest.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Packing bags for production",
+            [MaterialRequestItem.Create(productId, 100, "BAG")]);
+        request.Approve(Guid.NewGuid());
+        var purchaseOrder = PurchaseOrder.Issue(
+            request,
+            Guid.NewGuid(),
+            "INR",
+            new Dictionary<Guid, decimal> { [productId] = 35 });
+
+        var dispatchedOnUtc = new DateTime(2026, 8, 31, 6, 30, 0, DateTimeKind.Utc);
+        purchaseOrder.MarkDispatched(dispatchedOnUtc);
+
+        Assert.Equal(PurchaseOrderStatus.Dispatched, purchaseOrder.Status);
+        Assert.Equal(dispatchedOnUtc, purchaseOrder.DispatchedOnUtc);
+        purchaseOrder.MarkReceived(dispatchedOnUtc.AddDays(1));
+        Assert.Equal(PurchaseOrderStatus.Received, purchaseOrder.Status);
+    }
+
+    [Fact]
     public void Warehouse_receipt_must_match_PO_and_receiving_location()
     {
         var productId = Guid.NewGuid();

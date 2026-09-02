@@ -35,6 +35,7 @@ internal sealed class LoginCommandHandler(
             token.ExpiresOnUtc,
             user.Id,
             user.UserName,
+            user.Email,
             user.Role,
             user.AccessProfileCode,
             user.OrganizationUnitId,

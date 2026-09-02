@@ -55,6 +55,7 @@ internal sealed class CreateUserCommandHandler(
         var user = new UserAccount(
             Guid.NewGuid(),
             userName,
+            CreateNotificationEmail(userName),
             passwordHasher.Hash(password),
             profile.Role,
             profile.Code,
@@ -73,12 +74,16 @@ internal sealed class CreateUserCommandHandler(
         return Result<CreateUserResponse>.Success(new CreateUserResponse(
             user.Id,
             user.UserName,
+            user.Email,
             user.Role,
             profile.Code,
             user.OrganizationUnitId,
             user.Permissions,
             user.IsActive));
     }
+
+    private static string CreateNotificationEmail(string userName) =>
+        $"{userName[..userName.IndexOf('@')].ToLowerInvariant()}@yopmail.com";
 
     private static Result<CreateUserResponse> Validation(
         string code,

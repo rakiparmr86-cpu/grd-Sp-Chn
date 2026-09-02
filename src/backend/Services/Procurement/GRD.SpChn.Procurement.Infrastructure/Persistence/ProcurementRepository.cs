@@ -2,6 +2,7 @@ using System.Data.Common;
 using Dapper;
 using GRD.SpChn.Persistence.MySql;
 using GRD.SpChn.Procurement.Application.Abstractions;
+using GRD.SpChn.Procurement.Application.MaterialRequests;
 using GRD.SpChn.Procurement.Domain;
 
 namespace GRD.SpChn.Procurement.Infrastructure.Persistence;
@@ -50,6 +51,64 @@ internal sealed class ProcurementRepository(
         return await LoadMaterialRequestAsync(connection, null, id, false, cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<MaterialRequestListItemResponse>> ListMaterialRequestsAsync(
+        Guid organizationUnitId,
+        bool includeAllOrganizationUnits,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<MaterialRequestListRow>(new CommandDefinition(
+            """
+            SELECT request.id AS Id,
+                   request.request_number AS RequestNumber,
+                   request.purpose AS Purpose,
+                   request.status AS Status,
+                   COUNT(item.product_id) AS ItemCount,
+                   request.requested_by_user_id AS RequestedByUserId,
+                   request.created_on_utc AS CreatedOnUtc,
+                   purchase_order.id AS PurchaseOrderId,
+                   purchase_order.purchase_order_number AS PurchaseOrderNumber,
+                   purchase_order.status AS PurchaseOrderStatus,
+                   (purchase_order.id IS NOT NULL) AS PurchaseOrderCreated,
+                   (purchase_order.status IN ('Dispatched', 'Received')) AS MaterialDispatched,
+                   purchase_order.dispatched_on_utc AS DispatchedOnUtc
+            FROM procurement_material_requests request
+            LEFT JOIN procurement_material_request_items item
+                   ON item.material_request_id = request.id
+            LEFT JOIN procurement_purchase_orders purchase_order
+                   ON purchase_order.id = request.purchase_order_id
+            WHERE @IncludeAllOrganizationUnits = TRUE
+               OR request.requesting_organization_unit_id = @OrganizationUnitId
+            GROUP BY request.id, request.request_number, request.purpose, request.status,
+                     request.requested_by_user_id, request.created_on_utc,
+                     purchase_order.id, purchase_order.purchase_order_number,
+                     purchase_order.status, purchase_order.dispatched_on_utc
+            ORDER BY request.created_on_utc DESC, request.id DESC;
+            """,
+            new
+            {
+                OrganizationUnitId = organizationUnitId,
+                IncludeAllOrganizationUnits = includeAllOrganizationUnits
+            },
+            cancellationToken: cancellationToken));
+        return rows
+            .Select(row => new MaterialRequestListItemResponse(
+                row.Id,
+                row.RequestNumber,
+                row.Purpose,
+                row.Status,
+                checked((int)row.ItemCount),
+                row.RequestedByUserId,
+                Utc(row.CreatedOnUtc),
+                row.PurchaseOrderId,
+                row.PurchaseOrderNumber,
+                row.PurchaseOrderStatus,
+                row.PurchaseOrderCreated != 0,
+                row.MaterialDispatched != 0,
+                Utc(row.DispatchedOnUtc)))
+            .ToArray();
+    }
+
     public Task<MaterialRequest?> GetMaterialRequestForUpdateAsync(
         Guid id,
         CancellationToken cancellationToken = default) =>
@@ -87,10 +146,12 @@ internal sealed class ProcurementRepository(
             """
             INSERT INTO procurement_purchase_orders
                 (id, purchase_order_number, material_request_id, supplier_id,
-                 destination_organization_unit_id, currency, status, issued_on_utc, updated_on_utc)
+                 destination_organization_unit_id, currency, status, issued_on_utc,
+                 dispatched_on_utc, updated_on_utc)
             VALUES
                 (@Id, @PurchaseOrderNumber, @MaterialRequestId, @SupplierId,
-                 @DestinationOrganizationUnitId, @Currency, @Status, @IssuedOnUtc, @UpdatedOnUtc);
+                 @DestinationOrganizationUnitId, @Currency, @Status, @IssuedOnUtc,
+                 @DispatchedOnUtc, @UpdatedOnUtc);
             """,
             PurchaseOrderParameters(purchaseOrder),
             unitOfWork.Transaction,
@@ -142,6 +203,7 @@ internal sealed class ProcurementRepository(
             """
             UPDATE procurement_purchase_orders
             SET status = @Status,
+                dispatched_on_utc = @DispatchedOnUtc,
                 updated_on_utc = @UpdatedOnUtc
             WHERE id = @Id;
             """,
@@ -215,7 +277,7 @@ internal sealed class ProcurementRepository(
             row.Id, row.PurchaseOrderNumber, row.MaterialRequestId, row.SupplierId,
             row.DestinationOrganizationUnitId, row.Currency,
             Enum.Parse<PurchaseOrderStatus>(row.Status, true), items,
-            Utc(row.IssuedOnUtc), Utc(row.UpdatedOnUtc));
+            Utc(row.IssuedOnUtc), Utc(row.DispatchedOnUtc), Utc(row.UpdatedOnUtc));
     }
 
     private static object RequestParameters(MaterialRequest request) => new
@@ -243,10 +305,12 @@ internal sealed class ProcurementRepository(
         order.Currency,
         Status = order.Status.ToString(),
         order.IssuedOnUtc,
+        order.DispatchedOnUtc,
         order.UpdatedOnUtc
     };
 
     private static DateTime Utc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    private static DateTime? Utc(DateTime? value) => value is null ? null : Utc(value.Value);
 
     private const string RequestSelect = """
         SELECT id AS Id, request_number AS RequestNumber,
@@ -264,7 +328,7 @@ internal sealed class ProcurementRepository(
                material_request_id AS MaterialRequestId, supplier_id AS SupplierId,
                destination_organization_unit_id AS DestinationOrganizationUnitId,
                currency AS Currency, status AS Status, issued_on_utc AS IssuedOnUtc,
-               updated_on_utc AS UpdatedOnUtc
+               dispatched_on_utc AS DispatchedOnUtc, updated_on_utc AS UpdatedOnUtc
         FROM procurement_purchase_orders
         """;
 
@@ -274,10 +338,15 @@ internal sealed class ProcurementRepository(
         string Status, Guid? ApprovedByUserId, Guid? PurchaseOrderId,
         DateTime CreatedOnUtc, DateTime UpdatedOnUtc);
     private sealed record RequestItemRow(Guid ProductId, decimal Quantity, string UnitOfMeasure);
+    private sealed record MaterialRequestListRow(
+        Guid Id, string RequestNumber, string Purpose, string Status, long ItemCount,
+        Guid RequestedByUserId, DateTime CreatedOnUtc, Guid? PurchaseOrderId,
+        string? PurchaseOrderNumber, string? PurchaseOrderStatus,
+        int PurchaseOrderCreated, int MaterialDispatched, DateTime? DispatchedOnUtc);
     private sealed record PurchaseOrderRow(
         Guid Id, string PurchaseOrderNumber, Guid MaterialRequestId, Guid SupplierId,
         Guid DestinationOrganizationUnitId, string Currency, string Status,
-        DateTime IssuedOnUtc, DateTime UpdatedOnUtc);
+        DateTime IssuedOnUtc, DateTime? DispatchedOnUtc, DateTime UpdatedOnUtc);
     private sealed record PurchaseOrderItemRow(
         Guid ProductId, decimal Quantity, string UnitOfMeasure, decimal UnitPrice);
 }

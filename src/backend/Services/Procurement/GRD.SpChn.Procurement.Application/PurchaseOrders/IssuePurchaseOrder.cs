@@ -67,6 +67,21 @@ internal sealed class IssuePurchaseOrderCommandHandler(
                 MessagingTopology.ProcurementExchange,
                 MessagingTopology.PurchaseOrderIssuedRoutingKey,
                 cancellationToken);
+            await outboxWriter.AddAsync(
+                new ActivityNotificationRequestedIntegrationEvent(
+                    "procurement.purchase-order.issued",
+                    "MaterialRequest",
+                    materialRequest.Id,
+                    $"Purchase order {purchaseOrder.PurchaseOrderNumber} created",
+                    $"A purchase order was created for requisition {materialRequest.RequestNumber}.",
+                    [materialRequest.RequestedByUserId],
+                    ["procurement.purchase-order.read"])
+                {
+                    OccurredOnUtc = purchaseOrder.IssuedOnUtc
+                },
+                MessagingTopology.NotificationExchange,
+                MessagingTopology.NotificationRequestedRoutingKey,
+                cancellationToken);
 
             return Result<PurchaseOrderResponse>.Success(PurchaseOrderResponse.From(purchaseOrder));
         }

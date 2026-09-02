@@ -18,6 +18,7 @@ internal sealed class UserAccountRepository(IDbConnectionFactory connectionFacto
             """
             SELECT user_account.id AS Id,
                    user_account.user_name AS UserName,
+                   user_account.email AS Email,
                    user_account.password_hash AS PasswordHash,
                    access_profile.role_name AS Role,
                    access_profile.code AS AccessProfileCode,
@@ -49,6 +50,7 @@ internal sealed class UserAccountRepository(IDbConnectionFactory connectionFacto
             : new UserAccount(
                 row.Id,
                 row.UserName,
+                row.Email,
                 row.PasswordHash,
                 row.Role,
                 row.AccessProfileCode,
@@ -68,16 +70,17 @@ internal sealed class UserAccountRepository(IDbConnectionFactory connectionFacto
             await connection.ExecuteAsync(new CommandDefinition(
                 """
                 INSERT INTO identity_users
-                    (id, user_name, normalized_user_name, password_hash, role_name,
+                    (id, user_name, email, normalized_user_name, password_hash, role_name,
                      access_profile_code, organization_unit_id, is_active, created_on_utc)
                 VALUES
-                    (@Id, @UserName, UPPER(@UserName), @PasswordHash, @Role,
+                    (@Id, @UserName, @Email, UPPER(@UserName), @PasswordHash, @Role,
                      @AccessProfileCode, @OrganizationUnitId, @IsActive, UTC_TIMESTAMP(6));
                 """,
                 new
                 {
                     user.Id,
                     user.UserName,
+                    user.Email,
                     user.PasswordHash,
                     user.Role,
                     user.AccessProfileCode,
@@ -105,6 +108,7 @@ internal sealed class UserAccountRepository(IDbConnectionFactory connectionFacto
     private sealed record UserRow(
         Guid Id,
         string UserName,
+        string Email,
         string PasswordHash,
         string Role,
         string AccessProfileCode,

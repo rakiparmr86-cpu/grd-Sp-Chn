@@ -3,6 +3,7 @@ export interface LoginResponse {
   expiresOnUtc: string
   userId: string
   userName: string
+  email: string
   role: string
   accessProfile: string
   organizationUnitId: string
@@ -48,6 +49,7 @@ export interface CreateUserRequest {
 export interface CreatedUser {
   userId: string
   userName: string
+  email: string
   role: string
   accessProfile: string
   organizationUnitId: string
@@ -81,6 +83,72 @@ export interface MaterialRequest {
   purchaseOrderId: string | null
   createdOnUtc: string
   updatedOnUtc: string
+}
+
+export interface MaterialRequestListItem {
+  id: string
+  requestNumber: string
+  purpose: string
+  status: string
+  itemCount: number
+  requestedByUserId: string
+  createdOnUtc: string
+  purchaseOrderId: string | null
+  purchaseOrderNumber: string | null
+  purchaseOrderStatus: string | null
+  purchaseOrderCreated: boolean
+  materialDispatched: boolean
+  dispatchedOnUtc: string | null
+}
+
+export interface PurchaseOrderPriceInput {
+  productId: string
+  unitPrice: number
+}
+
+export interface IssuePurchaseOrderRequest {
+  supplierId: string
+  currency: string
+  prices: PurchaseOrderPriceInput[]
+}
+
+export interface PurchaseOrderItem {
+  productId: string
+  quantity: number
+  unitOfMeasure: string
+  unitPrice: number
+}
+
+export interface PurchaseOrder {
+  id: string
+  purchaseOrderNumber: string
+  materialRequestId: string
+  supplierId: string
+  destinationOrganizationUnitId: string
+  currency: string
+  status: string
+  items: PurchaseOrderItem[]
+  issuedOnUtc: string
+  dispatchedOnUtc: string | null
+  updatedOnUtc: string
+}
+
+export interface Supplier {
+  id: string
+  code: string
+  legalName: string
+  displayName: string
+  taxIdentificationNumber: string | null
+  email: string | null
+  phone: string | null
+  addressLine1: string | null
+  city: string | null
+  state: string | null
+  postalCode: string | null
+  countryCode: string
+  paymentTermsDays: number
+  defaultCurrency: string
+  status: string
 }
 
 interface ProblemDetails {
@@ -189,6 +257,45 @@ export const api = {
     request<MaterialRequest>(
       '/api/procurement/material-requests',
       { method: 'POST', body: JSON.stringify(payload) },
+      accessToken,
+    ),
+
+  listMaterialRequests: (accessToken: string) =>
+    request<MaterialRequestListItem[]>(
+      '/api/procurement/material-requests',
+      {},
+      accessToken,
+    ),
+
+  getMaterialRequest: (accessToken: string, materialRequestId: string) =>
+    request<MaterialRequest>(
+      `/api/procurement/material-requests/${encodeURIComponent(materialRequestId)}`,
+      {},
+      accessToken,
+    ),
+
+  approveMaterialRequest: (accessToken: string, materialRequestId: string) =>
+    request<MaterialRequest>(
+      `/api/procurement/material-requests/${encodeURIComponent(materialRequestId)}/approve`,
+      { method: 'POST' },
+      accessToken,
+    ),
+
+  issuePurchaseOrder: (
+    accessToken: string,
+    materialRequestId: string,
+    payload: IssuePurchaseOrderRequest,
+  ) =>
+    request<PurchaseOrder>(
+      `/api/procurement/material-requests/${encodeURIComponent(materialRequestId)}/purchase-orders`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      accessToken,
+    ),
+
+  getSuppliers: (accessToken: string) =>
+    request<Supplier[]>(
+      '/api/suppliers/catalog',
+      {},
       accessToken,
     ),
 }

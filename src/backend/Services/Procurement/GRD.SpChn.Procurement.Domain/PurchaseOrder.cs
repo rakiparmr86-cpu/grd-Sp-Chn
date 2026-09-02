@@ -3,6 +3,7 @@ namespace GRD.SpChn.Procurement.Domain;
 public enum PurchaseOrderStatus
 {
     Issued,
+    Dispatched,
     Received
 }
 
@@ -26,6 +27,7 @@ public sealed class PurchaseOrder
         PurchaseOrderStatus status,
         IReadOnlyCollection<PurchaseOrderItem> items,
         DateTime issuedOnUtc,
+        DateTime? dispatchedOnUtc,
         DateTime updatedOnUtc)
     {
         Id = id;
@@ -37,6 +39,7 @@ public sealed class PurchaseOrder
         Status = status;
         _items = items;
         IssuedOnUtc = issuedOnUtc;
+        DispatchedOnUtc = dispatchedOnUtc;
         UpdatedOnUtc = updatedOnUtc;
     }
 
@@ -49,6 +52,7 @@ public sealed class PurchaseOrder
     public PurchaseOrderStatus Status { get; private set; }
     public IReadOnlyCollection<PurchaseOrderItem> Items => _items;
     public DateTime IssuedOnUtc { get; }
+    public DateTime? DispatchedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
 
     public static PurchaseOrder Issue(
@@ -85,6 +89,7 @@ public sealed class PurchaseOrder
             PurchaseOrderStatus.Issued,
             items,
             now,
+            null,
             now);
     }
 
@@ -98,13 +103,25 @@ public sealed class PurchaseOrder
         PurchaseOrderStatus status,
         IReadOnlyCollection<PurchaseOrderItem> items,
         DateTime issuedOnUtc,
+        DateTime? dispatchedOnUtc,
         DateTime updatedOnUtc) =>
         new(id, purchaseOrderNumber, materialRequestId, supplierId,
-            destinationOrganizationUnitId, currency, status, items, issuedOnUtc, updatedOnUtc);
+            destinationOrganizationUnitId, currency, status, items, issuedOnUtc,
+            dispatchedOnUtc, updatedOnUtc);
+
+    public void MarkDispatched(DateTime? utcNow = null)
+    {
+        if (Status != PurchaseOrderStatus.Issued)
+            throw new InvalidOperationException($"Purchase order {Id} cannot be dispatched from {Status}.");
+        var now = utcNow ?? DateTime.UtcNow;
+        Status = PurchaseOrderStatus.Dispatched;
+        DispatchedOnUtc = now;
+        UpdatedOnUtc = now;
+    }
 
     public void MarkReceived(DateTime? utcNow = null)
     {
-        if (Status != PurchaseOrderStatus.Issued)
+        if (Status is not (PurchaseOrderStatus.Issued or PurchaseOrderStatus.Dispatched))
             throw new InvalidOperationException($"Purchase order {Id} cannot be received from {Status}.");
         Status = PurchaseOrderStatus.Received;
         UpdatedOnUtc = utcNow ?? DateTime.UtcNow;

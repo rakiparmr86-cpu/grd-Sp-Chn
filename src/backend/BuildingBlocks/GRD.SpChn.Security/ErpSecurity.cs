@@ -40,6 +40,8 @@ public static class ErpPermissions
     public const string MaterialRequestApprove = "procurement.material-request.approve";
     public const string PurchaseOrderCreate = "procurement.purchase-order.create";
     public const string PurchaseOrderRead = "procurement.purchase-order.read";
+    public const string SupplierRead = "supplier.read";
+    public const string SupplierManage = "supplier.manage";
     public const string InventoryStockRead = "inventory.stock.read";
     public const string GoodsReceiptRead = "warehouse.goods-receipt.read";
     public const string GoodsReceiptPost = "warehouse.goods-receipt.post";
@@ -56,6 +58,8 @@ public static class ErpPolicies
     public const string MaterialRequestApprove = nameof(MaterialRequestApprove);
     public const string PurchaseOrderCreate = nameof(PurchaseOrderCreate);
     public const string PurchaseOrderRead = nameof(PurchaseOrderRead);
+    public const string SupplierRead = nameof(SupplierRead);
+    public const string SupplierManage = nameof(SupplierManage);
     public const string InventoryStockRead = nameof(InventoryStockRead);
     public const string GoodsReceiptRead = nameof(GoodsReceiptRead);
     public const string GoodsReceiptPost = nameof(GoodsReceiptPost);
@@ -197,6 +201,8 @@ public static class SecurityDependencyInjection
             AddPermissionPolicy(authorization, ErpPolicies.MaterialRequestApprove, ErpPermissions.MaterialRequestApprove);
             AddPermissionPolicy(authorization, ErpPolicies.PurchaseOrderCreate, ErpPermissions.PurchaseOrderCreate);
             AddPermissionPolicy(authorization, ErpPolicies.PurchaseOrderRead, ErpPermissions.PurchaseOrderRead);
+            AddPermissionPolicy(authorization, ErpPolicies.SupplierRead, ErpPermissions.SupplierRead);
+            AddPermissionPolicy(authorization, ErpPolicies.SupplierManage, ErpPermissions.SupplierManage);
             AddPermissionPolicy(authorization, ErpPolicies.InventoryStockRead, ErpPermissions.InventoryStockRead);
             AddPermissionPolicy(authorization, ErpPolicies.GoodsReceiptRead, ErpPermissions.GoodsReceiptRead);
             AddPermissionPolicy(authorization, ErpPolicies.GoodsReceiptPost, ErpPermissions.GoodsReceiptPost);

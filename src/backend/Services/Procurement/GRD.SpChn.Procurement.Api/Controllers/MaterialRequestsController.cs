@@ -12,6 +12,19 @@ namespace GRD.SpChn.Procurement.Api.Controllers;
 [Route("material-requests")]
 public sealed class MaterialRequestsController(ISender sender) : ControllerBase
 {
+    [Authorize(Policy = ErpPolicies.MaterialRequestRead)]
+    [HttpGet]
+    public async Task<IActionResult> List(CancellationToken cancellationToken)
+    {
+        var includeAllOrganizationUnits = User.HasClaim(
+            ErpClaimTypes.Permission,
+            ErpPermissions.MaterialRequestApprove);
+        var requests = await sender.Send(new ListMaterialRequestsQuery(
+            User.GetRequiredOrganizationUnitId(),
+            includeAllOrganizationUnits), cancellationToken);
+        return Ok(requests);
+    }
+
     [Authorize(Policy = ErpPolicies.MaterialRequestCreate)]
     [HttpPost]
     public async Task<IActionResult> Create(

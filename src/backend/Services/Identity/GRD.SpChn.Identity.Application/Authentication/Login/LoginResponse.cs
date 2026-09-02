@@ -5,6 +5,7 @@ public sealed record LoginResponse(
     DateTime ExpiresOnUtc,
     Guid UserId,
     string UserName,
+    string Email,
     string Role,
     string AccessProfile,
     Guid OrganizationUnitId,

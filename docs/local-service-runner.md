@@ -88,7 +88,8 @@ behavior, see [Understanding the GRD VS Code F5 startup flow](vscode-f5-debug-fl
 
 ### A service is already running
 
-Use this approach when the services were started with `GRD: Start enabled services`:
+Use this approach when you want to keep services that were started with
+`GRD: Start enabled services` running:
 
 1. Add a breakpoint in the API, application handler, repository, consumer, or worker.
 2. Open **Run and Debug** (`Ctrl+Shift+D`).
@@ -100,10 +101,10 @@ an attached debug session detaches VS Code; it does not intentionally stop the s
 
 ### Launch one service under the debugger
 
-Stop the normal copy of that service first. Then select its named profile, such as
-`GRD: Identity API (7001)`, and press `F5`. Before launch, VS Code:
+Select its named profile, such as `GRD: Identity API (7001)`, and press `F5`.
+Before launch, VS Code:
 
-1. checks that the service port/process is not already running;
+1. stops an existing copy only when it is proven to belong to this repository;
 2. starts the Docker MySQL and RabbitMQ infrastructure;
 3. builds only the selected project;
 4. launches the compiled DLL with the C# debugger attached.
@@ -125,7 +126,9 @@ breakpoints in `.tsx` files bind to the original TypeScript source.
 
 ### Port or executable already in use
 
-That means a normal copy of the same service is still running. Do one of these:
+F5 automatically stops a stale copy when its executable path or `dotnet` command
+line belongs to this repository. If another repository or unrelated application owns
+the port, startup fails without terminating that process. In that case, do one of these:
 
 - select the attach profile and debug the existing process; or
 - stop that service terminal with `Ctrl+C`, then launch its named debug profile.
@@ -136,12 +139,13 @@ Windows, because its generated executable can be locked.
 ### Start every backend service with one F5
 
 Use `GRD: Start ALL backend services with debugger` when a full-system debug session
-is genuinely required. Stop any normally running GRD API/worker first, select this
-compound profile in **Run and Debug**, and press `F5` once.
+is genuinely required. Select this compound profile in **Run and Debug** and press
+`F5`; manually stopping an older copy first is no longer required.
 
 VS Code then performs this sequence:
 
-1. verifies that all GRD API ports and worker process names are free;
+1. stops stale APIs/workers that are proven to belong to this repository, while
+   refusing to terminate a process from another repository;
 2. starts the Docker MySQL and RabbitMQ infrastructure;
 3. builds all enabled projects sequentially to avoid Windows executable locks;
 4. launches all 14 backend APIs and 3 workers with a debugger attached to each;

@@ -258,6 +258,33 @@ public sealed class IntegrationEventContractTests
         Assert.Equal(50, receiptCopy.Items.Single().Quantity);
     }
 
+    [Fact]
+    public void Activity_notification_contract_round_trips_direct_and_permission_recipients()
+    {
+        var directRecipient = Guid.NewGuid();
+        var notification = new ActivityNotificationRequestedIntegrationEvent(
+            "procurement.material-request.created",
+            "MaterialRequest",
+            Guid.NewGuid(),
+            "Material request created",
+            "Material request MR-001 is awaiting approval.",
+            [directRecipient],
+            ["procurement.material-request.approve"]);
+
+        var copy = RoundTrip(notification);
+
+        AssertEnvelopeEqual(notification, copy);
+        Assert.Equal(notification.ActivityCode, copy.ActivityCode);
+        Assert.Equal(notification.ReferenceType, copy.ReferenceType);
+        Assert.Equal(notification.ReferenceId, copy.ReferenceId);
+        Assert.Equal(notification.Subject, copy.Subject);
+        Assert.Equal(notification.Body, copy.Body);
+        Assert.Equal([directRecipient], copy.RecipientUserIds);
+        Assert.Equal(
+            ["procurement.material-request.approve"],
+            copy.RecipientPermissionCodes);
+    }
+
     private static T RoundTrip<T>(T integrationEvent)
         where T : IIntegrationEvent
     {
