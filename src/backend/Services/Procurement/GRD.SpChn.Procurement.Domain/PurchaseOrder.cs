@@ -11,7 +11,10 @@ public sealed record PurchaseOrderItem(
     Guid ProductId,
     decimal Quantity,
     string UnitOfMeasure,
-    decimal UnitPrice);
+    decimal UnitPrice)
+{
+    public decimal LineAmount => Quantity * UnitPrice;
+}
 
 public sealed class PurchaseOrder
 {
@@ -51,6 +54,7 @@ public sealed class PurchaseOrder
     public string Currency { get; }
     public PurchaseOrderStatus Status { get; private set; }
     public IReadOnlyCollection<PurchaseOrderItem> Items => _items;
+    public decimal TotalAmount => _items.Sum(item => item.LineAmount);
     public DateTime IssuedOnUtc { get; }
     public DateTime? DispatchedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }

@@ -11,6 +11,19 @@ namespace GRD.SpChn.Procurement.Api.Controllers;
 public sealed class PurchaseOrdersController(ISender sender) : ControllerBase
 {
     [Authorize(Policy = ErpPolicies.PurchaseOrderRead)]
+    [HttpGet]
+    public async Task<IActionResult> List(CancellationToken cancellationToken)
+    {
+        var includeAllOrganizationUnits = User.HasClaim(
+            ErpClaimTypes.Permission,
+            ErpPermissions.PurchaseOrderCreate);
+        var orders = await sender.Send(new ListPurchaseOrdersQuery(
+            User.GetRequiredOrganizationUnitId(),
+            includeAllOrganizationUnits), cancellationToken);
+        return Ok(orders);
+    }
+
+    [Authorize(Policy = ErpPolicies.PurchaseOrderRead)]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {

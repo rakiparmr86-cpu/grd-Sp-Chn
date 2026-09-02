@@ -50,6 +50,7 @@ $migrationFiles = @(
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/005_identity_dynamic_permissions.sql")
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/006_requisition_tracking_notifications.sql")
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/007_supplier_master.sql")
+    (Join-Path $repositoryRoot "deploy/docker/mysql/init/008_product_catalog_master.sql")
 )
 $composeArguments = @("compose")
 if (Test-Path -LiteralPath $dockerEnvironmentFile -PathType Leaf) {
@@ -72,4 +73,4 @@ foreach ($migrationFile in $migrationFiles) {
     }
 }
 
-Write-Host "Local Identity, requisition tracking, notifications, and supplier master are ready." -ForegroundColor Green
+Write-Host "Local Identity, requisition tracking, notifications, supplier master, and product catalog are ready." -ForegroundColor Green

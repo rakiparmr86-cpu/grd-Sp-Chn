@@ -11,6 +11,7 @@ public sealed record PurchaseOrderResponse(
     string Currency,
     string Status,
     IReadOnlyCollection<PurchaseOrderItemResponse> Items,
+    decimal TotalAmount,
     DateTime IssuedOnUtc,
     DateTime? DispatchedOnUtc,
     DateTime UpdatedOnUtc)
@@ -28,7 +29,9 @@ public sealed record PurchaseOrderResponse(
                 item.ProductId,
                 item.Quantity,
                 item.UnitOfMeasure,
-                item.UnitPrice)).ToArray(),
+                item.UnitPrice,
+                item.LineAmount)).ToArray(),
+            order.TotalAmount,
             order.IssuedOnUtc,
             order.DispatchedOnUtc,
             order.UpdatedOnUtc);
@@ -38,4 +41,5 @@ public sealed record PurchaseOrderItemResponse(
     Guid ProductId,
     decimal Quantity,
     string UnitOfMeasure,
-    decimal UnitPrice);
+    decimal UnitPrice,
+    decimal LineAmount);

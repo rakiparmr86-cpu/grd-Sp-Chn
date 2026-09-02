@@ -177,6 +177,52 @@ internal sealed class ProcurementRepository(
         }
     }
 
+    public async Task<IReadOnlyCollection<PurchaseOrder>> ListPurchaseOrdersAsync(
+        Guid organizationUnitId,
+        bool includeAllOrganizationUnits,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        var rows = (await connection.QueryAsync<PurchaseOrderRow>(new CommandDefinition(
+            PurchaseOrderSelect +
+            """
+             WHERE @IncludeAllOrganizationUnits = TRUE
+                OR destination_organization_unit_id = @OrganizationUnitId
+             ORDER BY issued_on_utc DESC, id DESC;
+            """,
+            new
+            {
+                OrganizationUnitId = organizationUnitId,
+                IncludeAllOrganizationUnits = includeAllOrganizationUnits
+            },
+            cancellationToken: cancellationToken))).ToArray();
+        if (rows.Length == 0) return [];
+
+        var itemRows = await connection.QueryAsync<PurchaseOrderListItemRow>(new CommandDefinition(
+            """
+            SELECT purchase_order_id AS PurchaseOrderId, product_id AS ProductId,
+                   quantity AS Quantity, unit_of_measure AS UnitOfMeasure,
+                   unit_price AS UnitPrice
+            FROM procurement_purchase_order_items
+            WHERE purchase_order_id IN @PurchaseOrderIds
+            ORDER BY purchase_order_id, product_id;
+            """,
+            new { PurchaseOrderIds = rows.Select(row => row.Id).ToArray() },
+            cancellationToken: cancellationToken));
+        var itemsByOrder = itemRows.ToLookup(item => item.PurchaseOrderId);
+
+        return rows.Select(row => RehydratePurchaseOrder(
+            row,
+            itemsByOrder[row.Id]
+                .Select(item => new PurchaseOrderItem(
+                    item.ProductId,
+                    item.Quantity,
+                    item.UnitOfMeasure,
+                    item.UnitPrice))
+                .ToArray()))
+            .ToArray();
+    }
+
     public async Task<PurchaseOrder?> GetPurchaseOrderAsync(
         Guid id,
         CancellationToken cancellationToken = default)
@@ -273,12 +319,17 @@ internal sealed class ProcurementRepository(
             .Select(item => new PurchaseOrderItem(
                 item.ProductId, item.Quantity, item.UnitOfMeasure, item.UnitPrice))
             .ToArray();
-        return PurchaseOrder.Rehydrate(
+        return RehydratePurchaseOrder(row, items);
+    }
+
+    private static PurchaseOrder RehydratePurchaseOrder(
+        PurchaseOrderRow row,
+        IReadOnlyCollection<PurchaseOrderItem> items) =>
+        PurchaseOrder.Rehydrate(
             row.Id, row.PurchaseOrderNumber, row.MaterialRequestId, row.SupplierId,
             row.DestinationOrganizationUnitId, row.Currency,
             Enum.Parse<PurchaseOrderStatus>(row.Status, true), items,
             Utc(row.IssuedOnUtc), Utc(row.DispatchedOnUtc), Utc(row.UpdatedOnUtc));
-    }
 
     private static object RequestParameters(MaterialRequest request) => new
     {
@@ -349,4 +400,7 @@ internal sealed class ProcurementRepository(
         DateTime IssuedOnUtc, DateTime? DispatchedOnUtc, DateTime UpdatedOnUtc);
     private sealed record PurchaseOrderItemRow(
         Guid ProductId, decimal Quantity, string UnitOfMeasure, decimal UnitPrice);
+    private sealed record PurchaseOrderListItemRow(
+        Guid PurchaseOrderId, Guid ProductId, decimal Quantity,
+        string UnitOfMeasure, decimal UnitPrice);
 }
