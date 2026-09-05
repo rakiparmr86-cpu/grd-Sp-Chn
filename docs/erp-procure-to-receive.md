@@ -16,6 +16,13 @@ Procurement transaction
 Outbox Publisher -> RabbitMQ procurement.events
 Warehouse consumer at the production location
   -> creates Expected Purchase Order through Inbox deduplication
+Outside supplier (no GRD login)
+  -> physically dispatches material and sends challan/dispatch advice
+Purchase Department user
+  -> records the supplier dispatch against the issued PO
+  -> system stores vendor details + authenticated internal audit owner
+Outside supplier/carrier
+  -> delivers material to the production location
 Production Store Supervisor
   -> verifies delivered items against the expected PO
   -> posts Goods Receipt / GRN
@@ -37,6 +44,8 @@ supplier validation and production consumption are future slices.
 | Identity | Login, PBKDF2 password verification, JWT, role/permission/org claims | Organization hierarchy and business approvals |
 | Organization | Enterprise-to-facility hierarchy | Users, stock and procurement transactions |
 | Procurement | Material Request, approval, Purchase Order and procurement status | Physical receipt and stock balance |
+| Product Catalog | Material, category and UOM masters used by requisitions and POs | Stock balances, purchasing and receiving |
+| Supplier | Supplier master and supplier lifecycle | Purchase Orders and vendor-user authentication |
 | Warehouse | Expected PO, physical verification and GRN | Supplier negotiation and stock valuation |
 | Inventory | On-hand quantity per organization location and product | PO/GRN documents |
 | Outbox Publisher | Reliable publishing from service-owned Outbox tables | Business decisions |
@@ -100,15 +109,62 @@ user/permission APIs.
 | Read request | `GET /api/procurement/material-requests/{id}` | `procurement.material-request.read` |
 | Approve request | `POST /api/procurement/material-requests/{id}/approve` | `procurement.material-request.approve` |
 | Issue PO | `POST /api/procurement/material-requests/{id}/purchase-orders` | `procurement.purchase-order.create` |
-| Record material dispatch | `POST /api/procurement/purchase-orders/{id}/dispatch` | `procurement.purchase-order.create` |
+| List POs with item rates/totals | `GET /api/procurement/purchase-orders` | `procurement.purchase-order.read` |
+| Record vendor dispatch | `POST /api/procurement/purchase-orders/{id}/dispatch` | `procurement.purchase-order.dispatch` |
 | Read PO | `GET /api/procurement/purchase-orders/{id}` | `procurement.purchase-order.read` |
 | List active suppliers | `GET /api/suppliers/catalog` | `supplier.read` |
+| List active material/UOM master | `GET /api/products/items` | `catalog.item.read` |
 | View expected PO | `GET /api/warehouses/purchase-orders/{id}` | `warehouse.goods-receipt.read` |
 | Post GRN | `POST /api/warehouses/purchase-orders/{id}/goods-receipts` | `warehouse.goods-receipt.post` |
 | Read location stock | `GET /api/inventory/stock/locations/{organizationUnitId}/{productId}` | `inventory.stock.read` |
 
 The API derives the current `userId` and `organizationUnitId` from the validated JWT.
 The browser is never allowed to submit those security-sensitive identities.
+
+## Vendor dispatch without a vendor login
+
+The supplier is an external business party, not an Identity user. The GRD system
+therefore does not create a password, role, JWT or menu for the supplier. After an
+issued PO is sent outside GRD, the supplier dispatches the goods using its own
+process and shares a dispatch reference or delivery challan by email, portal,
+telephone, EDI or a future secure supplier portal.
+
+An authenticated Purchase Department employee opens the PO list and selects
+**Record dispatch**. The employee records the supplier reference, challan,
+transporter, vehicle, dispatch date and expected delivery date. The server takes
+`recorded_by_user_id` from the employee's JWT; it never trusts a user ID submitted
+by the browser. This creates two separate audit identities:
+
+- `supplier_id`: the external supplier that physically sent the material;
+- `recorded_by_user_id`: the internal employee who entered the advice in GRD.
+
+The record is stored in `procurement_purchase_order_dispatches`, while the PO moves
+from `Issued` to `Dispatched`. A notification is written to the Procurement Outbox
+in the same transaction. The branch/store can then see that material is in transit;
+only an authorized Warehouse/Store user posts the Goods Receipt after physically
+checking the delivery.
+
+Version 1 supports one complete dispatch per PO. Partial shipments require a future
+dispatch-header/dispatch-line model and must not be simulated by overwriting this
+audit row.
+
+Example Gateway request (the bearer token belongs to the Purchase employee):
+
+```http
+POST /api/procurement/purchase-orders/{purchaseOrderId}/dispatch
+Authorization: Bearer <purchase-employee-token>
+Content-Type: application/json
+
+{
+  "vendorDispatchReference": "ABACUS-DSP-10027",
+  "deliveryChallanNumber": "DC-10027",
+  "transporterName": "North Freight",
+  "vehicleNumber": "DL01AB1234",
+  "dispatchedOnUtc": "2026-09-05T10:30:00Z",
+  "expectedDeliveryOnUtc": "2026-09-07T10:30:00Z",
+  "notes": "Deliver to Delhi Manufacturing Plant store gate"
+}
+```
 
 ## Supplier master
 
@@ -123,6 +179,19 @@ Abacus, GRD, AU, and IDFC. They are test records, not verified real-world vendor
 identities. Purchase Manager and Regional General Manager receive `supplier.read`;
 Director receives `supplier.read` and `supplier.manage`. The PO screen loads only
 active suppliers through the Gateway instead of keeping supplier IDs in React.
+
+## Material and UOM master
+
+Migration `008_product_catalog_master.sql` creates the Product Catalog-owned
+`catalog_categories`, `catalog_units_of_measure` and `catalog_items` tables. It
+seeds store/procurement test materials including Packing Bag, Coal, Furnace Oil,
+Maize, Rice and Edible Oil. A requisition stores the stable catalog item ID and the
+requested quantity/UOM; the material name is loaded from Product Catalog rather
+than hard-coded in React.
+
+Migration `009_purchase_order_vendor_dispatch.sql` creates the vendor dispatch
+audit table and dynamically assigns `procurement.purchase-order.dispatch` to the
+Purchase Manager, Regional General Manager and Director access profiles.
 
 ## Local setup
 
@@ -141,9 +210,11 @@ Start these processes:
 ```text
 API Gateway       7000
 Identity          7001
+Product Catalog   5006
 Inventory         5018
 Organization      5218
 Procurement       5112
+Supplier          5141
 Warehouse         5276
 Outbox Publisher  background worker
 ```

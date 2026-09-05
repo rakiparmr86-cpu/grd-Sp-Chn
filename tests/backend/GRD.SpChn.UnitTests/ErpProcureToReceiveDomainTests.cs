@@ -54,6 +54,7 @@ public sealed class ErpProcureToReceiveDomainTests
         Assert.Equal(MaterialRequestStatus.PurchaseOrderIssued, request.Status);
         Assert.Equal(PurchaseOrderStatus.Issued, purchaseOrder.Status);
         Assert.Equal(25, purchaseOrder.Items.Single().Quantity);
+        Assert.Equal(3012.50m, purchaseOrder.TotalAmount);
     }
 
     [Fact]
@@ -85,17 +86,32 @@ public sealed class ErpProcureToReceiveDomainTests
             "Packing bags for production",
             [MaterialRequestItem.Create(productId, 100, "BAG")]);
         request.Approve(Guid.NewGuid());
+        var supplierId = Guid.NewGuid();
         var purchaseOrder = PurchaseOrder.Issue(
             request,
-            Guid.NewGuid(),
+            supplierId,
             "INR",
             new Dictionary<Guid, decimal> { [productId] = 35 });
 
         var dispatchedOnUtc = new DateTime(2026, 8, 31, 6, 30, 0, DateTimeKind.Utc);
-        purchaseOrder.MarkDispatched(dispatchedOnUtc);
+        var recordedOnUtc = dispatchedOnUtc.AddHours(1);
+        var dispatch = PurchaseOrderDispatch.Record(
+            purchaseOrder,
+            Guid.NewGuid(),
+            "VENDOR-DSP-1001",
+            "CH-1001",
+            "GRD Test Transport",
+            "DL 01 AB 1234",
+            dispatchedOnUtc,
+            dispatchedOnUtc.AddDays(1),
+            "Full order dispatched",
+            recordedOnUtc);
+        purchaseOrder.MarkDispatched(dispatch);
 
         Assert.Equal(PurchaseOrderStatus.Dispatched, purchaseOrder.Status);
         Assert.Equal(dispatchedOnUtc, purchaseOrder.DispatchedOnUtc);
+        Assert.Equal(supplierId, dispatch.SupplierId);
+        Assert.Equal("VENDOR-DSP-1001", dispatch.VendorDispatchReference);
         purchaseOrder.MarkReceived(dispatchedOnUtc.AddDays(1));
         Assert.Equal(PurchaseOrderStatus.Received, purchaseOrder.Status);
     }

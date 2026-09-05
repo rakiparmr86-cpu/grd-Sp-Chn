@@ -2,13 +2,17 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   api,
   ApiError,
+  type CatalogItem,
   type LoginResponse,
   type MaterialRequest,
   type MaterialRequestListItem,
   type OrganizationUnit,
+  type PurchaseOrder,
+  type Supplier,
 } from '../api'
 import { hasPermission } from '../auth'
 import { PurchaseOrderPanel } from './PurchaseOrderPanel'
+import { VendorDispatchPanel } from './VendorDispatchPanel'
 
 interface MaterialRequestWorkspaceProps {
   session: LoginResponse
@@ -22,31 +26,13 @@ interface MaterialLineForm {
   unitOfMeasure: string
 }
 
-const materialCatalog = [
-  {
-    id: '30000000-0000-0000-0000-000000000001',
-    name: 'Packing Bag · 70 kg capacity',
-    unitOfMeasure: 'BAG',
-  },
-  {
-    id: '30000000-0000-0000-0000-000000000002',
-    name: 'Production Coal',
-    unitOfMeasure: 'MT',
-  },
-  {
-    id: '30000000-0000-0000-0000-000000000003',
-    name: 'Furnace Oil',
-    unitOfMeasure: 'LTR',
-  },
-] as const
-
-function createLine(catalogIndex = 0): MaterialLineForm {
-  const material = materialCatalog[catalogIndex] ?? materialCatalog[0]
+function createLine(catalog: CatalogItem[], catalogIndex = 0): MaterialLineForm {
+  const material = catalog[catalogIndex] ?? catalog[0]
   return {
     key: crypto.randomUUID(),
-    productId: material.id,
+    productId: material?.id ?? '',
     quantity: '',
-    unitOfMeasure: material.unitOfMeasure,
+    unitOfMeasure: material?.baseUnitOfMeasure ?? '',
   }
 }
 
@@ -55,8 +41,11 @@ export function MaterialRequestWorkspace({
   onBack,
 }: MaterialRequestWorkspaceProps) {
   const [organizationUnits, setOrganizationUnits] = useState<OrganizationUnit[]>([])
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(true)
+  const [catalogError, setCatalogError] = useState('')
   const [purpose, setPurpose] = useState('')
-  const [lines, setLines] = useState<MaterialLineForm[]>([createLine()])
+  const [lines, setLines] = useState<MaterialLineForm[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [created, setCreated] = useState<MaterialRequest | null>(null)
@@ -66,15 +55,37 @@ export function MaterialRequestWorkspace({
   const canCreateRequest = hasPermission(session, 'procurement.material-request.create')
   const canApproveRequest = hasPermission(session, 'procurement.material-request.approve')
   const canCreatePurchaseOrder = hasPermission(session, 'procurement.purchase-order.create')
+  const canReadPurchaseOrders = hasPermission(session, 'procurement.purchase-order.read')
+  const canRecordDispatch = hasPermission(session, 'procurement.purchase-order.dispatch')
   const [actingRequestId, setActingRequestId] = useState<string | null>(null)
   const [purchaseOrderRequestId, setPurchaseOrderRequestId] = useState<string | null>(null)
   const [workflowMessage, setWorkflowMessage] = useState('')
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [purchaseOrdersLoading, setPurchaseOrdersLoading] = useState(canReadPurchaseOrders)
+  const [purchaseOrdersError, setPurchaseOrdersError] = useState('')
+  const [dispatchOrder, setDispatchOrder] = useState<PurchaseOrder | null>(null)
 
   useEffect(() => {
     let active = true
     api.getOrganizationUnits(session.accessToken)
       .then((units) => {
         if (active) setOrganizationUnits(units)
+      })
+    api.getProcurementItems(session.accessToken)
+      .then((items) => {
+        if (!active) return
+        setCatalogItems(items)
+        setLines((current) => current.length > 0 ? current : [createLine(items)])
+      })
+      .catch((reason: unknown) => {
+        if (!active) return
+        setCatalogError(reason instanceof ApiError
+          ? reason.message
+          : 'Could not load the Product Catalog item master.')
+      })
+      .finally(() => {
+        if (active) setCatalogLoading(false)
       })
       .catch(() => {
         // The authenticated organization id remains authoritative if names cannot be loaded.
@@ -93,10 +104,31 @@ export function MaterialRequestWorkspace({
         if (active) setListLoading(false)
       })
 
+    if (canReadPurchaseOrders) {
+      Promise.all([
+        api.listPurchaseOrders(session.accessToken),
+        api.getSuppliers(session.accessToken),
+      ])
+        .then(([orders, supplierItems]) => {
+          if (!active) return
+          setPurchaseOrders(orders)
+          setSuppliers(supplierItems)
+        })
+        .catch((reason: unknown) => {
+          if (!active) return
+          setPurchaseOrdersError(reason instanceof ApiError
+            ? reason.message
+            : 'Could not load purchase orders.')
+        })
+        .finally(() => {
+          if (active) setPurchaseOrdersLoading(false)
+        })
+    }
+
     return () => {
       active = false
     }
-  }, [session.accessToken])
+  }, [canReadPurchaseOrders, session.accessToken])
 
   const requestingUnit = useMemo(
     () => organizationUnits.find((unit) => unit.id === session.organizationUnitId),
@@ -111,18 +143,18 @@ export function MaterialRequestWorkspace({
   }
 
   function selectMaterial(key: string, productId: string) {
-    const material = materialCatalog.find((entry) => entry.id === productId)
+    const material = catalogItems.find((entry) => entry.id === productId)
     updateLine(key, {
       productId,
-      unitOfMeasure: material?.unitOfMeasure ?? 'EA',
+      unitOfMeasure: material?.baseUnitOfMeasure ?? 'EA',
     })
   }
 
   function addLine() {
-    const unusedIndex = materialCatalog.findIndex(
+    const unusedIndex = catalogItems.findIndex(
       (material) => !lines.some((line) => line.productId === material.id),
     )
-    setLines((current) => [...current, createLine(unusedIndex >= 0 ? unusedIndex : 0)])
+    setLines((current) => [...current, createLine(catalogItems, unusedIndex >= 0 ? unusedIndex : 0)])
     setCreated(null)
   }
 
@@ -133,9 +165,14 @@ export function MaterialRequestWorkspace({
 
   function resetForm() {
     setPurpose('')
-    setLines([createLine()])
+    setLines(catalogItems.length > 0 ? [createLine(catalogItems)] : [])
     setError('')
     setCreated(null)
+
+    if (lines.length === 0) {
+      setError('Select at least one active item from Product Catalog.')
+      return
+    }
   }
 
   async function refreshRequests() {
@@ -149,6 +186,26 @@ export function MaterialRequestWorkspace({
         : 'Could not load requisitions.')
     } finally {
       setListLoading(false)
+    }
+  }
+
+  async function refreshPurchaseOrders() {
+    if (!canReadPurchaseOrders) return
+    setPurchaseOrdersLoading(true)
+    setPurchaseOrdersError('')
+    try {
+      const [orders, supplierItems] = await Promise.all([
+        api.listPurchaseOrders(session.accessToken),
+        api.getSuppliers(session.accessToken),
+      ])
+      setPurchaseOrders(orders)
+      setSuppliers(supplierItems)
+    } catch (reason) {
+      setPurchaseOrdersError(reason instanceof ApiError
+        ? reason.message
+        : 'Could not load purchase orders.')
+    } finally {
+      setPurchaseOrdersLoading(false)
     }
   }
 
@@ -212,7 +269,7 @@ export function MaterialRequestWorkspace({
         <div>
           <button className="workspace-back" type="button" onClick={onBack}>← Dashboard</button>
           <h1 id="material-request-title">
-            {canCreateRequest ? 'GRD M. Requisition' : 'Material requisitions'}
+            {canCreateRequest ? 'GRD M. Requisition' : 'Material R'}
           </h1>
           <p>
             {canCreateRequest
@@ -276,11 +333,14 @@ export function MaterialRequestWorkspace({
             className="add-line-button"
             type="button"
             onClick={addLine}
-            disabled={lines.length >= materialCatalog.length}
+            disabled={catalogLoading || catalogItems.length === 0 || lines.length >= catalogItems.length}
           >
             + Add material
           </button>
         </div>
+
+        {catalogError && <div className="form-alert requisition-message" role="alert">Product Catalog: {catalogError}</div>}
+        {catalogLoading && <div className="requisition-list-empty"><span className="spinner spinner--dark" /> Loading item master…</div>}
 
         <div className="request-lines" role="group" aria-label="Requested material lines">
           <div className="request-line request-line--header" aria-hidden="true">
@@ -299,8 +359,10 @@ export function MaterialRequestWorkspace({
                   aria-label={`Material ${index + 1}`}
                   required
                 >
-                  {materialCatalog.map((material) => (
-                    <option key={material.id} value={material.id}>{material.name}</option>
+                  {catalogItems.map((material) => (
+                    <option key={material.id} value={material.id}>
+                      {material.name} · {material.code}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -396,11 +458,16 @@ export function MaterialRequestWorkspace({
                   <th>Purchase order</th>
                   <th>Material dispatch</th>
                   <th>Created</th>
-                  {(canApproveRequest || canCreatePurchaseOrder) && <th>Action</th>}
+                  {(canApproveRequest || canCreatePurchaseOrder || canRecordDispatch) && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
-                {requests.map((request) => (
+                {requests.map((request) => {
+                  const linkedPurchaseOrder = request.purchaseOrderId
+                    ? purchaseOrders.find((order) => order.id === request.purchaseOrderId)
+                    : undefined
+
+                  return (
                   <tr key={request.id}>
                     <td>
                       <strong>{request.requestNumber}</strong>
@@ -428,7 +495,7 @@ export function MaterialRequestWorkspace({
                       )}
                     </td>
                     <td>{new Date(request.createdOnUtc).toLocaleDateString('en-IN')}</td>
-                    {(canApproveRequest || canCreatePurchaseOrder) && (
+                    {(canApproveRequest || canCreatePurchaseOrder || canRecordDispatch) && (
                       <td className="requisition-action-cell">
                         {request.status === 'Submitted' && canApproveRequest ? (
                           <button
@@ -450,6 +517,17 @@ export function MaterialRequestWorkspace({
                           >
                             Create PO
                           </button>
+                        ) : request.purchaseOrderCreated &&
+                            !request.materialDispatched &&
+                            linkedPurchaseOrder?.status === 'Issued' &&
+                            canRecordDispatch ? (
+                          <button
+                            className="table-action-button table-action-button--primary"
+                            type="button"
+                            onClick={() => setDispatchOrder(linkedPurchaseOrder)}
+                          >
+                            Record dispatch
+                          </button>
                         ) : (
                           <span className="table-action-complete">
                             {request.purchaseOrderCreated ? 'PO created' : 'No action'}
@@ -458,17 +536,114 @@ export function MaterialRequestWorkspace({
                       </td>
                     )}
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
       </section>
 
+      {canReadPurchaseOrders && (
+        <section className="requisition-list-card purchase-order-list-card" aria-labelledby="purchase-order-list-title">
+          <div className="requisition-list-heading">
+            <div>
+              <strong id="purchase-order-list-title">Purchase order list</strong>
+              <span>Review supplier, ordered quantity, negotiated rate, amount, and dispatch state.</span>
+            </div>
+            <button type="button" onClick={refreshPurchaseOrders} disabled={purchaseOrdersLoading}>
+              {purchaseOrdersLoading ? 'Refreshing…' : '↻ Refresh'}
+            </button>
+          </div>
+
+          {purchaseOrdersError && <div className="form-alert requisition-list-alert" role="alert">{purchaseOrdersError}</div>}
+          {purchaseOrdersLoading && purchaseOrders.length === 0 ? (
+            <div className="requisition-list-empty"><span className="spinner spinner--dark" /> Loading purchase orders…</div>
+          ) : purchaseOrders.length === 0 ? (
+            <div className="requisition-list-empty">No purchase orders have been created yet.</div>
+          ) : (
+            <div className="requisition-table-scroll">
+              <table className="requisition-table purchase-order-table">
+                <thead>
+                  <tr>
+                    <th>Purchase order</th>
+                    <th>Supplier</th>
+                    <th>Items and rates</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Issued</th>
+                    {canRecordDispatch && <th>Action</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {purchaseOrders.map((order) => {
+                    const supplier = suppliers.find((item) => item.id === order.supplierId)
+                    return (
+                      <tr key={order.id}>
+                        <td>
+                          <strong>{order.purchaseOrderNumber}</strong>
+                          <small>Requisition {order.materialRequestId.slice(0, 8)}…</small>
+                        </td>
+                        <td>
+                          <strong>{supplier?.displayName ?? 'Supplier'}</strong>
+                          <small>{supplier?.code ?? order.supplierId}</small>
+                        </td>
+                        <td className="po-rate-lines">
+                          {order.items.map((item) => {
+                            const catalogItem = catalogItems.find((entry) => entry.id === item.productId)
+                            const lineAmount = item.lineAmount ?? item.quantity * item.unitPrice
+                            return (
+                              <div key={item.productId}>
+                                <strong>{catalogItem?.name ?? item.productId}</strong>
+                                <small>
+                                  {item.quantity.toLocaleString('en-IN')} {item.unitOfMeasure}
+                                  {' × '}{order.currency} {item.unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  {' = '}{order.currency} {lineAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </small>
+                              </div>
+                            )
+                          })}
+                        </td>
+                        <td className="po-total-cell">
+                          <strong>{order.currency} {(order.totalAmount ?? order.items.reduce(
+                            (total, item) => total + item.quantity * item.unitPrice,
+                            0,
+                          )).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                        </td>
+                        <td><span className={`tracking-status tracking-status--${order.status.toLowerCase()}`}>{order.status}</span></td>
+                        <td>{new Date(order.issuedOnUtc).toLocaleDateString('en-IN')}</td>
+                        {canRecordDispatch && (
+                          <td className="requisition-action-cell">
+                            {order.status === 'Issued' ? (
+                              <button
+                                className="table-action-button table-action-button--primary"
+                                type="button"
+                                onClick={() => setDispatchOrder(order)}
+                              >
+                                Record dispatch
+                              </button>
+                            ) : (
+                              <span className="table-action-complete">
+                                {order.status === 'Received' ? 'Received' : 'Dispatch recorded'}
+                              </span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
       {purchaseOrderRequestId && (
         <PurchaseOrderPanel
           accessToken={session.accessToken}
           materialRequestId={purchaseOrderRequestId}
+          catalogItems={catalogItems}
           onClose={() => setPurchaseOrderRequestId(null)}
           onCreated={(purchaseOrder) => {
             setPurchaseOrderRequestId(null)
@@ -476,6 +651,22 @@ export function MaterialRequestWorkspace({
               `${purchaseOrder.purchaseOrderNumber} was created and sent to the receiving workflow.`,
             )
             void refreshRequests()
+            void refreshPurchaseOrders()
+          }}
+        />
+      )}
+
+      {dispatchOrder && (
+        <VendorDispatchPanel
+          accessToken={session.accessToken}
+          purchaseOrder={dispatchOrder}
+          supplierName={suppliers.find((supplier) => supplier.id === dispatchOrder.supplierId)?.displayName ?? 'Selected supplier'}
+          onClose={() => setDispatchOrder(null)}
+          onRecorded={(purchaseOrder) => {
+            setDispatchOrder(null)
+            setWorkflowMessage(`${purchaseOrder.purchaseOrderNumber} vendor dispatch was recorded and Warehouse was notified.`)
+            void refreshRequests()
+            void refreshPurchaseOrders()
           }}
         />
       )}

@@ -113,14 +113,15 @@ public sealed class PurchaseOrder
             destinationOrganizationUnitId, currency, status, items, issuedOnUtc,
             dispatchedOnUtc, updatedOnUtc);
 
-    public void MarkDispatched(DateTime? utcNow = null)
+    public void MarkDispatched(PurchaseOrderDispatch dispatch)
     {
         if (Status != PurchaseOrderStatus.Issued)
             throw new InvalidOperationException($"Purchase order {Id} cannot be dispatched from {Status}.");
-        var now = utcNow ?? DateTime.UtcNow;
+        if (dispatch.PurchaseOrderId != Id || dispatch.SupplierId != SupplierId)
+            throw new InvalidOperationException("Dispatch advice does not belong to this purchase order and supplier.");
         Status = PurchaseOrderStatus.Dispatched;
-        DispatchedOnUtc = now;
-        UpdatedOnUtc = now;
+        DispatchedOnUtc = dispatch.DispatchedOnUtc;
+        UpdatedOnUtc = dispatch.RecordedOnUtc;
     }
 
     public void MarkReceived(DateTime? utcNow = null)

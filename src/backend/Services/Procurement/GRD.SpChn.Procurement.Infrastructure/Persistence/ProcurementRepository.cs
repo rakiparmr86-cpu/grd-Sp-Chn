@@ -223,6 +223,28 @@ internal sealed class ProcurementRepository(
             .ToArray();
     }
 
+    public async Task AddPurchaseOrderDispatchAsync(
+        PurchaseOrderDispatch dispatch,
+        CancellationToken cancellationToken = default)
+    {
+        await unitOfWork.Connection.ExecuteAsync(new CommandDefinition(
+            """
+            INSERT INTO procurement_purchase_order_dispatches
+                (id, purchase_order_id, supplier_id, recorded_by_user_id,
+                 vendor_dispatch_reference, delivery_challan_number,
+                 transporter_name, vehicle_number, dispatched_on_utc,
+                 expected_delivery_on_utc, notes, recorded_on_utc)
+            VALUES
+                (@Id, @PurchaseOrderId, @SupplierId, @RecordedByUserId,
+                 @VendorDispatchReference, @DeliveryChallanNumber,
+                 @TransporterName, @VehicleNumber, @DispatchedOnUtc,
+                 @ExpectedDeliveryOnUtc, @Notes, @RecordedOnUtc);
+            """,
+            dispatch,
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken));
+    }
+
     public async Task<PurchaseOrder?> GetPurchaseOrderAsync(
         Guid id,
         CancellationToken cancellationToken = default)

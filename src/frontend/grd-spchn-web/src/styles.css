@@ -151,7 +151,7 @@ button { cursor: pointer; }
 .login-form { display: grid; gap: 17px; }
 .field { display: grid; gap: 7px; }
 .field > span { color: #58647b; font-size: .69rem; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
-.field input, .field select {
+.field input, .field select, .field textarea {
   width: 100%;
   height: 48px;
   padding: 0 15px;
@@ -162,7 +162,7 @@ button { cursor: pointer; }
   background: #fff;
   transition: border-color .15s, box-shadow .15s;
 }
-.field input:focus, .field select:focus {
+.field input:focus, .field select:focus, .field textarea:focus {
   border-color: #6697fb;
   box-shadow: 0 0 0 4px rgba(57,120,246,.12);
 }
@@ -549,6 +549,19 @@ button { cursor: pointer; }
 .purchase-order-line label span { color: #64728a; font-size: .58rem; font-weight: 700; text-transform: uppercase; }
 .purchase-order-line input { width: 100%; height: 36px; padding: 0 10px; border: 1px solid #cbd6e6; border-radius: 6px; outline: 0; color: #2f3c53; font-size: .69rem; }
 .purchase-order-line input:focus { border-color: #6591e9; box-shadow: 0 0 0 3px rgba(57,120,246,.1); }
+.purchase-order-list-card { margin-top: 18px; }
+.purchase-order-table { min-width: 1120px; }
+.po-rate-lines { min-width: 330px; }
+.po-rate-lines > div { display: flex; flex-direction: column; gap: 3px; padding: 6px 0; border-top: 1px solid #edf1f6; }
+.po-rate-lines > div:first-child { border-top: 0; }
+.po-rate-lines strong { color: #31405a; font-size: .65rem; }
+.po-rate-lines small { color: #6f7d93; font-size: .61rem; }
+.po-total-cell { min-width: 125px; color: #1d5fbf; white-space: nowrap; }
+.tracking-status--issued { color: #6e4bb7; background: #f1ecff; }
+.tracking-status--dispatched { color: #94671f; background: #fff3dc; }
+.vendor-dispatch-drawer { width: min(680px, 100%); }
+.vendor-dispatch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field textarea { min-height: 82px; padding: 10px 13px; resize: vertical; }
 .permission-drawer { width: min(760px, 100%); }
 .permission-editor { display: grid; gap: 20px; padding-top: 25px; }
 .permission-summary {

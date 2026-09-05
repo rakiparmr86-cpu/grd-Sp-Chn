@@ -117,6 +117,7 @@ export interface PurchaseOrderItem {
   quantity: number
   unitOfMeasure: string
   unitPrice: number
+  lineAmount: number
 }
 
 export interface PurchaseOrder {
@@ -128,9 +129,57 @@ export interface PurchaseOrder {
   currency: string
   status: string
   items: PurchaseOrderItem[]
+  totalAmount: number
   issuedOnUtc: string
   dispatchedOnUtc: string | null
   updatedOnUtc: string
+}
+
+export interface CatalogItem {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  categoryCode: string
+  categoryName: string
+  baseUnitOfMeasure: string
+  unitOfMeasureName: string
+  inventoryTracked: boolean
+}
+
+export interface RecordVendorDispatchRequest {
+  vendorDispatchReference: string
+  deliveryChallanNumber: string | null
+  transporterName: string | null
+  vehicleNumber: string | null
+  dispatchedOnUtc: string
+  expectedDeliveryOnUtc: string | null
+  notes: string | null
+}
+
+export interface ExpectedPurchaseOrderItem {
+  productId: string
+  quantity: number
+  unitOfMeasure: string
+}
+
+export interface ExpectedPurchaseOrder {
+  purchaseOrderId: string
+  purchaseOrderNumber: string
+  supplierId: string
+  destinationOrganizationUnitId: string
+  status: string
+  items: ExpectedPurchaseOrderItem[]
+}
+
+export interface GoodsReceipt {
+  id: string
+  goodsReceiptNumber: string
+  purchaseOrderId: string
+  destinationOrganizationUnitId: string
+  receivedByUserId: string
+  receivedOnUtc: string
+  items: ExpectedPurchaseOrderItem[]
 }
 
 export interface Supplier {
@@ -292,10 +341,53 @@ export const api = {
       accessToken,
     ),
 
+  listPurchaseOrders: (accessToken: string) =>
+    request<PurchaseOrder[]>(
+      '/api/procurement/purchase-orders',
+      {},
+      accessToken,
+    ),
+
+  recordVendorDispatch: (
+    accessToken: string,
+    purchaseOrderId: string,
+    payload: RecordVendorDispatchRequest,
+  ) =>
+    request<PurchaseOrder>(
+      `/api/procurement/purchase-orders/${encodeURIComponent(purchaseOrderId)}/dispatch`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      accessToken,
+    ),
+
   getSuppliers: (accessToken: string) =>
     request<Supplier[]>(
       '/api/suppliers/catalog',
       {},
+      accessToken,
+    ),
+
+  getProcurementItems: (accessToken: string) =>
+    request<CatalogItem[]>(
+      '/api/products/items',
+      {},
+      accessToken,
+    ),
+
+  getExpectedPurchaseOrder: (accessToken: string, purchaseOrderId: string) =>
+    request<ExpectedPurchaseOrder>(
+      `/api/warehouses/purchase-orders/${encodeURIComponent(purchaseOrderId)}`,
+      {},
+      accessToken,
+    ),
+
+  postGoodsReceipt: (
+    accessToken: string,
+    purchaseOrderId: string,
+    items: ExpectedPurchaseOrderItem[],
+  ) =>
+    request<GoodsReceipt>(
+      `/api/warehouses/purchase-orders/${encodeURIComponent(purchaseOrderId)}/goods-receipts`,
+      { method: 'POST', body: JSON.stringify({ items }) },
       accessToken,
     ),
 }

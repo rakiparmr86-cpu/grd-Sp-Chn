@@ -7,7 +7,12 @@
       "launchBrowser": false,
       "applicationUrl": "http://localhost:5006",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost",
+        "RabbitMq__Port": "5672",
+        "RabbitMq__UserName": "grd",
+        "RabbitMq__Password": "grd-local"
       }
     }
   }

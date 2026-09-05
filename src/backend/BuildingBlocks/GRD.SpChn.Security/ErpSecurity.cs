@@ -40,6 +40,7 @@ public static class ErpPermissions
     public const string MaterialRequestApprove = "procurement.material-request.approve";
     public const string PurchaseOrderCreate = "procurement.purchase-order.create";
     public const string PurchaseOrderRead = "procurement.purchase-order.read";
+    public const string PurchaseOrderDispatch = "procurement.purchase-order.dispatch";
     public const string SupplierRead = "supplier.read";
     public const string SupplierManage = "supplier.manage";
     public const string CatalogItemRead = "catalog.item.read";
@@ -60,6 +61,7 @@ public static class ErpPolicies
     public const string MaterialRequestApprove = nameof(MaterialRequestApprove);
     public const string PurchaseOrderCreate = nameof(PurchaseOrderCreate);
     public const string PurchaseOrderRead = nameof(PurchaseOrderRead);
+    public const string PurchaseOrderDispatch = nameof(PurchaseOrderDispatch);
     public const string SupplierRead = nameof(SupplierRead);
     public const string SupplierManage = nameof(SupplierManage);
     public const string CatalogItemRead = nameof(CatalogItemRead);
@@ -205,6 +207,7 @@ public static class SecurityDependencyInjection
             AddPermissionPolicy(authorization, ErpPolicies.MaterialRequestApprove, ErpPermissions.MaterialRequestApprove);
             AddPermissionPolicy(authorization, ErpPolicies.PurchaseOrderCreate, ErpPermissions.PurchaseOrderCreate);
             AddPermissionPolicy(authorization, ErpPolicies.PurchaseOrderRead, ErpPermissions.PurchaseOrderRead);
+            AddPermissionPolicy(authorization, ErpPolicies.PurchaseOrderDispatch, ErpPermissions.PurchaseOrderDispatch);
             AddPermissionPolicy(authorization, ErpPolicies.SupplierRead, ErpPermissions.SupplierRead);
             AddPermissionPolicy(authorization, ErpPolicies.SupplierManage, ErpPermissions.SupplierManage);
             AddPermissionPolicy(authorization, ErpPolicies.CatalogItemRead, ErpPermissions.CatalogItemRead);

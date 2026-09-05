@@ -14,6 +14,9 @@ public interface IProcurementRepository
     Task<MaterialRequest?> GetMaterialRequestForUpdateAsync(Guid id, CancellationToken cancellationToken = default);
     Task UpdateMaterialRequestAsync(MaterialRequest request, CancellationToken cancellationToken = default);
     Task AddPurchaseOrderAsync(PurchaseOrder purchaseOrder, CancellationToken cancellationToken = default);
+    Task AddPurchaseOrderDispatchAsync(
+        PurchaseOrderDispatch dispatch,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<PurchaseOrder>> ListPurchaseOrdersAsync(
         Guid organizationUnitId,
         bool includeAllOrganizationUnits,

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import {
   api,
   ApiError,
+  type CatalogItem,
   type MaterialRequest,
   type PurchaseOrder,
   type Supplier,
@@ -10,19 +11,15 @@ import {
 interface PurchaseOrderPanelProps {
   accessToken: string
   materialRequestId: string
+  catalogItems: CatalogItem[]
   onClose: () => void
   onCreated: (purchaseOrder: PurchaseOrder) => void
-}
-
-const materialNames: Record<string, string> = {
-  '30000000-0000-0000-0000-000000000001': 'Packing Bag · 70 kg capacity',
-  '30000000-0000-0000-0000-000000000002': 'Production Coal',
-  '30000000-0000-0000-0000-000000000003': 'Furnace Oil',
 }
 
 export function PurchaseOrderPanel({
   accessToken,
   materialRequestId,
+  catalogItems,
   onClose,
   onCreated,
 }: PurchaseOrderPanelProps) {
@@ -200,7 +197,7 @@ export function PurchaseOrderPanel({
               {request.items.map((item) => (
                 <div className="purchase-order-line" key={item.productId}>
                   <div>
-                    <strong>{materialNames[item.productId] ?? item.productId}</strong>
+                    <strong>{catalogItems.find((catalogItem) => catalogItem.id === item.productId)?.name ?? item.productId}</strong>
                     <small>{item.quantity} {item.unitOfMeasure} requested</small>
                   </div>
                   <label>

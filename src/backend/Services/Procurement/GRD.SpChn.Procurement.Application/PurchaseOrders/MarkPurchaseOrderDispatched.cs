@@ -1,13 +1,21 @@
 using GRD.SpChn.Procurement.Application.Abstractions;
 using GRD.SpChn.SharedKernel;
 using GRD.SpChn.Contracts.IntegrationEvents;
+using GRD.SpChn.Procurement.Domain;
 using MediatR;
 
 namespace GRD.SpChn.Procurement.Application.PurchaseOrders;
 
 public sealed record MarkPurchaseOrderDispatchedCommand(
     Guid PurchaseOrderId,
-    Guid RecordedByUserId)
+    Guid RecordedByUserId,
+    string VendorDispatchReference,
+    string? DeliveryChallanNumber,
+    string? TransporterName,
+    string? VehicleNumber,
+    DateTime DispatchedOnUtc,
+    DateTime? ExpectedDeliveryOnUtc,
+    string? Notes)
     : IRequest<Result<PurchaseOrderResponse>>, ITransactionalRequest;
 
 internal sealed class MarkPurchaseOrderDispatchedCommandHandler(
@@ -31,7 +39,18 @@ internal sealed class MarkPurchaseOrderDispatchedCommandHandler(
 
         try
         {
-            purchaseOrder.MarkDispatched();
+            var dispatch = PurchaseOrderDispatch.Record(
+                purchaseOrder,
+                request.RecordedByUserId,
+                request.VendorDispatchReference,
+                request.DeliveryChallanNumber,
+                request.TransporterName,
+                request.VehicleNumber,
+                request.DispatchedOnUtc,
+                request.ExpectedDeliveryOnUtc,
+                request.Notes);
+            purchaseOrder.MarkDispatched(dispatch);
+            await repository.AddPurchaseOrderDispatchAsync(dispatch, cancellationToken);
             await repository.UpdatePurchaseOrderAsync(purchaseOrder, cancellationToken);
             var materialRequest = await repository.GetMaterialRequestForUpdateAsync(
                 purchaseOrder.MaterialRequestId,
@@ -43,7 +62,7 @@ internal sealed class MarkPurchaseOrderDispatchedCommandHandler(
                     "MaterialRequest",
                     materialRequest.Id,
                     $"Material dispatched for {materialRequest.RequestNumber}",
-                    $"Material against purchase order {purchaseOrder.PurchaseOrderNumber} has been marked as dispatched.",
+                    $"Vendor dispatch {dispatch.VendorDispatchReference} was recorded against purchase order {purchaseOrder.PurchaseOrderNumber}. Expected delivery: {dispatch.ExpectedDeliveryOnUtc?.ToString("yyyy-MM-dd") ?? "not provided"}.",
                     [materialRequest.RequestedByUserId],
                     ["procurement.purchase-order.read"])
                 {
@@ -54,7 +73,7 @@ internal sealed class MarkPurchaseOrderDispatchedCommandHandler(
                 cancellationToken);
             return Result<PurchaseOrderResponse>.Success(PurchaseOrderResponse.From(purchaseOrder));
         }
-        catch (InvalidOperationException exception)
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
         {
             return Result<PurchaseOrderResponse>.Failure(Error.Conflict(
                 "Procurement.InvalidPurchaseOrderState",

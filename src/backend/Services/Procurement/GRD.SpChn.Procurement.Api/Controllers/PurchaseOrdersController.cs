@@ -36,13 +36,23 @@ public sealed class PurchaseOrdersController(ISender sender) : ControllerBase
                 detail: result.FirstError.Description);
     }
 
-    [Authorize(Policy = ErpPolicies.PurchaseOrderCreate)]
+    [Authorize(Policy = ErpPolicies.PurchaseOrderDispatch)]
     [HttpPost("{id:guid}/dispatch")]
-    public async Task<IActionResult> MarkDispatched(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> MarkDispatched(
+        Guid id,
+        [FromBody] RecordVendorDispatchRequest request,
+        CancellationToken cancellationToken)
     {
         var result = await sender.Send(new MarkPurchaseOrderDispatchedCommand(
             id,
-            User.GetRequiredUserId()), cancellationToken);
+            User.GetRequiredUserId(),
+            request.VendorDispatchReference,
+            request.DeliveryChallanNumber,
+            request.TransporterName,
+            request.VehicleNumber,
+            request.DispatchedOnUtc ?? DateTime.UtcNow,
+            request.ExpectedDeliveryOnUtc,
+            request.Notes), cancellationToken);
         return result.IsSuccess
             ? Ok(result.Value)
             : Problem(
@@ -53,3 +63,12 @@ public sealed class PurchaseOrdersController(ISender sender) : ControllerBase
                 detail: result.FirstError.Description);
     }
 }
+
+public sealed record RecordVendorDispatchRequest(
+    string VendorDispatchReference,
+    string? DeliveryChallanNumber,
+    string? TransporterName,
+    string? VehicleNumber,
+    DateTime? DispatchedOnUtc,
+    DateTime? ExpectedDeliveryOnUtc,
+    string? Notes);
