@@ -16,6 +16,7 @@ internal sealed class ReceivePurchasedStockCommandHandler(
         CancellationToken cancellationToken)
     {
         if (request.EventId == Guid.Empty ||
+            request.QualityInspectionId == Guid.Empty ||
             request.GoodsReceiptId == Guid.Empty ||
             request.DestinationOrganizationUnitId == Guid.Empty ||
             request.Items.Count == 0)
@@ -44,7 +45,7 @@ internal sealed class ReceivePurchasedStockCommandHandler(
 
         var isNew = await inboxStore.TryAddAsync(
             request.EventId,
-            nameof(GoodsReceiptPostedIntegrationEvent),
+            nameof(QualityInspectionApprovedIntegrationEvent),
             cancellationToken);
         if (!isNew)
         {
@@ -54,7 +55,11 @@ internal sealed class ReceivePurchasedStockCommandHandler(
 
         foreach (var receipt in receipts)
         {
-            await repository.ReceiveAsync(receipt, cancellationToken);
+            await repository.ReceiveAsync(
+                receipt,
+                request.EventId,
+                request.QualityInspectionId,
+                cancellationToken);
         }
 
         return Result<ReceivePurchasedStockResponse>.Success(

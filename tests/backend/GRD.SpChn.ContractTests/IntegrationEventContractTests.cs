@@ -249,6 +249,15 @@ public sealed class IntegrationEventContractTests
 
         var issuedCopy = RoundTrip(issued);
         var receiptCopy = RoundTrip(receipt);
+        var qualityApproval = new QualityInspectionApprovedIntegrationEvent(
+            Guid.NewGuid(),
+            receipt.GoodsReceiptId,
+            receipt.GoodsReceiptNumber,
+            receipt.PurchaseOrderId,
+            destinationId,
+            Guid.NewGuid(),
+            [new QualityApprovedItem(productId, 50, "KG")]);
+        var qualityApprovalCopy = RoundTrip(qualityApproval);
 
         AssertEnvelopeEqual(issued, issuedCopy);
         Assert.Equal(destinationId, issuedCopy.DestinationOrganizationUnitId);
@@ -256,6 +265,9 @@ public sealed class IntegrationEventContractTests
         AssertEnvelopeEqual(receipt, receiptCopy);
         Assert.Equal(issued.PurchaseOrderId, receiptCopy.PurchaseOrderId);
         Assert.Equal(50, receiptCopy.Items.Single().Quantity);
+        AssertEnvelopeEqual(qualityApproval, qualityApprovalCopy);
+        Assert.Equal(receipt.GoodsReceiptId, qualityApprovalCopy.GoodsReceiptId);
+        Assert.Equal(50, qualityApprovalCopy.Items.Single().Quantity);
     }
 
     [Fact]

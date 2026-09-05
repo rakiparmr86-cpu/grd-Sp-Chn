@@ -142,4 +142,64 @@ public sealed class ErpProcureToReceiveDomainTests
         Assert.Equal(ExpectedPurchaseOrderStatus.Received, expected.Status);
         Assert.Equal(locationId, receipt.DestinationOrganizationUnitId);
     }
+
+    [Fact]
+    public void Received_material_can_be_released_only_by_quality_at_the_same_location()
+    {
+        var locationId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var expected = ExpectedPurchaseOrder.Register(
+            Guid.NewGuid(),
+            "PO-QUALITY-001",
+            Guid.NewGuid(),
+            locationId,
+            [new ExpectedPurchaseOrderItem(productId, 25, "KG")],
+            DateTime.UtcNow);
+        var receipt = expected.Receive(
+            locationId,
+            Guid.NewGuid(),
+            [new ReceivedItem(productId, 25, "KG")]);
+
+        Assert.Throws<UnauthorizedAccessException>(() => QualityInspection.Complete(
+            receipt,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            QualityInspectionResult.Passed,
+            null));
+
+        var inspection = QualityInspection.Complete(
+            receipt,
+            locationId,
+            Guid.NewGuid(),
+            QualityInspectionResult.Passed,
+            "Moisture and packaging within specification");
+
+        Assert.Equal(QualityInspectionResult.Passed, inspection.Result);
+        Assert.Equal(receipt.Id, inspection.GoodsReceiptId);
+    }
+
+    [Fact]
+    public void Rejected_quality_inspection_requires_a_reason()
+    {
+        var locationId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var expected = ExpectedPurchaseOrder.Register(
+            Guid.NewGuid(),
+            "PO-QUALITY-002",
+            Guid.NewGuid(),
+            locationId,
+            [new ExpectedPurchaseOrderItem(productId, 10, "BAG")],
+            DateTime.UtcNow);
+        var receipt = expected.Receive(
+            locationId,
+            Guid.NewGuid(),
+            [new ReceivedItem(productId, 10, "BAG")]);
+
+        Assert.Throws<ArgumentException>(() => QualityInspection.Complete(
+            receipt,
+            locationId,
+            Guid.NewGuid(),
+            QualityInspectionResult.Rejected,
+            null));
+    }
 }

@@ -59,7 +59,7 @@ function Wait-ForResult {
     throw "Timed out waiting for $Description."
 }
 
-$productId = [Guid]::NewGuid()
+$productId = [Guid]::Parse("30000000-0000-0000-0000-000000000004") # STORE-MAIZE
 $supplierId = [Guid]::Parse("20000000-0000-0000-0000-000000000001")
 $plantId = [Guid]::Parse("00000000-0000-0000-0000-000000000006")
 
@@ -101,6 +101,21 @@ $expectedOrder = Wait-ForResult `
     "the Warehouse expected purchase order"
 Write-Host "Warehouse PO status: $($expectedOrder.status)" -ForegroundColor Green
 
+$dispatch = Invoke-Authorized `
+    "Post" `
+    "/api/procurement/purchase-orders/$($purchaseOrder.id)/dispatch" `
+    $manager.accessToken `
+    @{
+        vendorDispatchReference = "SMOKE-DSP-$([DateTime]::UtcNow.ToString('yyyyMMddHHmmss'))"
+        deliveryChallanNumber = "SMOKE-CHALLAN"
+        transporterName = "GRD Test Transport"
+        vehicleNumber = "DL01TEST001"
+        dispatchedOnUtc = [DateTime]::UtcNow.ToString("o")
+        expectedDeliveryOnUtc = [DateTime]::UtcNow.AddDays(1).ToString("o")
+        notes = "Automated procure-to-quality-release smoke test"
+    }
+Write-Host "Vendor dispatch recorded: $($dispatch.status)" -ForegroundColor Green
+
 $receipt = Invoke-Authorized `
     "Post" `
     "/api/warehouses/purchase-orders/$($purchaseOrder.id)/goods-receipts" `
@@ -109,6 +124,16 @@ $receipt = Invoke-Authorized `
         items = @(@{ productId = $productId; quantity = 50; unitOfMeasure = "KG" })
     }
 Write-Host "Goods receipt posted: $($receipt.goodsReceiptNumber)" -ForegroundColor Green
+
+$qualityInspection = Invoke-Authorized `
+    "Post" `
+    "/api/warehouses/purchase-orders/$($purchaseOrder.id)/quality-inspection" `
+    $supervisor.accessToken `
+    @{
+        result = "Passed"
+        notes = "Smoke-test quality checks passed"
+    }
+Write-Host "Quality inspection: $($qualityInspection.result)" -ForegroundColor Green
 
 $stock = Wait-ForResult `
     { Invoke-Authorized "Get" "/api/inventory/stock/locations/$plantId/$productId" $supervisor.accessToken $null } `
@@ -122,4 +147,4 @@ $finalOrder = Wait-ForResult `
 
 Write-Host "Procurement status: $($finalOrder.status)" -ForegroundColor Green
 Write-Host "Plant on-hand stock: $($stock.onHandQuantity) KG" -ForegroundColor Green
-Write-Host "Procure-to-receive smoke test completed successfully." -ForegroundColor Green
+Write-Host "Procure-to-quality-release smoke test completed successfully." -ForegroundColor Green

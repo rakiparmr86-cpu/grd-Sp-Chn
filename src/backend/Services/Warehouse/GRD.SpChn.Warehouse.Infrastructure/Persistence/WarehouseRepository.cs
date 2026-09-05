@@ -105,6 +105,144 @@ internal sealed class WarehouseRepository(
         }
     }
 
+    public async Task<GoodsReceipt?> GetGoodsReceiptByPurchaseOrderAsync(
+        Guid purchaseOrderId,
+        bool forUpdate = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (forUpdate)
+        {
+            return await LoadGoodsReceiptAsync(
+                unitOfWork.Connection,
+                unitOfWork.Transaction,
+                purchaseOrderId,
+                true,
+                cancellationToken);
+        }
+
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        return await LoadGoodsReceiptAsync(connection, null, purchaseOrderId, false, cancellationToken);
+    }
+
+    public async Task<QualityInspection?> GetQualityInspectionByPurchaseOrderAsync(
+        Guid purchaseOrderId,
+        bool forUpdate = false,
+        CancellationToken cancellationToken = default)
+    {
+        var connection = forUpdate
+            ? unitOfWork.Connection
+            : await connectionFactory.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            var row = await connection.QuerySingleOrDefaultAsync<QualityInspectionRow>(new CommandDefinition(
+                """
+                SELECT id AS Id,
+                       goods_receipt_id AS GoodsReceiptId,
+                       purchase_order_id AS PurchaseOrderId,
+                       destination_organization_unit_id AS DestinationOrganizationUnitId,
+                       inspected_by_user_id AS InspectedByUserId,
+                       result AS Result,
+                       notes AS Notes,
+                       inspected_on_utc AS InspectedOnUtc
+                FROM warehouse_quality_inspections
+                WHERE purchase_order_id = @PurchaseOrderId
+                """ + (forUpdate ? " FOR UPDATE;" : ";"),
+                new { PurchaseOrderId = purchaseOrderId },
+                forUpdate ? unitOfWork.Transaction : null,
+                cancellationToken: cancellationToken));
+            return row is null
+                ? null
+                : QualityInspection.Rehydrate(
+                    row.Id,
+                    row.GoodsReceiptId,
+                    row.PurchaseOrderId,
+                    row.DestinationOrganizationUnitId,
+                    row.InspectedByUserId,
+                    Enum.Parse<QualityInspectionResult>(row.Result, true),
+                    row.Notes,
+                    DateTime.SpecifyKind(row.InspectedOnUtc, DateTimeKind.Utc));
+        }
+        finally
+        {
+            if (!forUpdate) await connection.DisposeAsync();
+        }
+    }
+
+    public Task AddQualityInspectionAsync(
+        QualityInspection inspection,
+        CancellationToken cancellationToken = default) =>
+        unitOfWork.Connection.ExecuteAsync(new CommandDefinition(
+            """
+            INSERT INTO warehouse_quality_inspections
+                (id, goods_receipt_id, purchase_order_id,
+                 destination_organization_unit_id, inspected_by_user_id,
+                 result, notes, inspected_on_utc)
+            VALUES
+                (@Id, @GoodsReceiptId, @PurchaseOrderId,
+                 @DestinationOrganizationUnitId, @InspectedByUserId,
+                 @Result, @Notes, @InspectedOnUtc);
+            """,
+            new
+            {
+                inspection.Id,
+                inspection.GoodsReceiptId,
+                inspection.PurchaseOrderId,
+                inspection.DestinationOrganizationUnitId,
+                inspection.InspectedByUserId,
+                Result = inspection.Result.ToString(),
+                inspection.Notes,
+                inspection.InspectedOnUtc
+            },
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken));
+
+    private static async Task<GoodsReceipt?> LoadGoodsReceiptAsync(
+        DbConnection connection,
+        DbTransaction? transaction,
+        Guid purchaseOrderId,
+        bool forUpdate,
+        CancellationToken cancellationToken)
+    {
+        var row = await connection.QuerySingleOrDefaultAsync<GoodsReceiptRow>(new CommandDefinition(
+            """
+            SELECT id AS Id,
+                   goods_receipt_number AS GoodsReceiptNumber,
+                   purchase_order_id AS PurchaseOrderId,
+                   destination_organization_unit_id AS DestinationOrganizationUnitId,
+                   received_by_user_id AS ReceivedByUserId,
+                   received_on_utc AS ReceivedOnUtc
+            FROM warehouse_goods_receipts
+            WHERE purchase_order_id = @PurchaseOrderId
+            """ + (forUpdate ? " FOR UPDATE;" : ";"),
+            new { PurchaseOrderId = purchaseOrderId },
+            transaction,
+            cancellationToken: cancellationToken));
+        if (row is null) return null;
+
+        var items = (await connection.QueryAsync<ItemRow>(new CommandDefinition(
+            """
+            SELECT product_id AS ProductId,
+                   quantity AS Quantity,
+                   unit_of_measure AS UnitOfMeasure
+            FROM warehouse_goods_receipt_items
+            WHERE goods_receipt_id = @GoodsReceiptId
+            ORDER BY product_id;
+            """,
+            new { GoodsReceiptId = row.Id },
+            transaction,
+            cancellationToken: cancellationToken)))
+            .Select(item => new ReceivedItem(item.ProductId, item.Quantity, item.UnitOfMeasure))
+            .ToArray();
+        return GoodsReceipt.Rehydrate(
+            row.Id,
+            row.GoodsReceiptNumber,
+            row.PurchaseOrderId,
+            row.DestinationOrganizationUnitId,
+            row.ReceivedByUserId,
+            items,
+            DateTime.SpecifyKind(row.ReceivedOnUtc, DateTimeKind.Utc));
+    }
+
     private static async Task<ExpectedPurchaseOrder?> LoadAsync(
         DbConnection connection,
         DbTransaction? transaction,
@@ -174,4 +312,20 @@ internal sealed class WarehouseRepository(
         DateTime IssuedOnUtc,
         DateTime UpdatedOnUtc);
     private sealed record ItemRow(Guid ProductId, decimal Quantity, string UnitOfMeasure);
+    private sealed record GoodsReceiptRow(
+        Guid Id,
+        string GoodsReceiptNumber,
+        Guid PurchaseOrderId,
+        Guid DestinationOrganizationUnitId,
+        Guid ReceivedByUserId,
+        DateTime ReceivedOnUtc);
+    private sealed record QualityInspectionRow(
+        Guid Id,
+        Guid GoodsReceiptId,
+        Guid PurchaseOrderId,
+        Guid DestinationOrganizationUnitId,
+        Guid InspectedByUserId,
+        string Result,
+        string? Notes,
+        DateTime InspectedOnUtc);
 }

@@ -11,5 +11,7 @@ public interface ILocationInventoryRepository
 
     Task ReceiveAsync(
         LocationStockReceipt receipt,
+        Guid eventId,
+        Guid qualityInspectionId,
         CancellationToken cancellationToken = default);
 }

@@ -26,10 +26,36 @@ internal sealed class InventoryRepository(
             cancellationToken: cancellationToken));
     }
 
-    public Task ReceiveAsync(
+    public async Task ReceiveAsync(
         LocationStockReceipt receipt,
-        CancellationToken cancellationToken = default) =>
-        unitOfWork.Connection.ExecuteAsync(new CommandDefinition(
+        Guid eventId,
+        Guid qualityInspectionId,
+        CancellationToken cancellationToken = default)
+    {
+        await unitOfWork.Connection.ExecuteAsync(new CommandDefinition(
+            """
+            INSERT INTO inventory_stock_movements
+                (id, event_id, source_type, source_id, organization_unit_id,
+                 product_id, movement_type, quantity, occurred_on_utc)
+            VALUES
+                (@Id, @EventId, 'QualityInspection', @QualityInspectionId,
+                 @OrganizationUnitId, @ProductId, 'QualityRelease', @Quantity,
+                 @OccurredOnUtc);
+            """,
+            new
+            {
+                Id = Guid.NewGuid(),
+                EventId = eventId,
+                QualityInspectionId = qualityInspectionId,
+                receipt.OrganizationUnitId,
+                receipt.ProductId,
+                receipt.Quantity,
+                OccurredOnUtc = DateTime.UtcNow
+            },
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken));
+
+        await unitOfWork.Connection.ExecuteAsync(new CommandDefinition(
             """
             INSERT INTO inventory_location_stock
                 (organization_unit_id, product_id, on_hand_quantity, updated_on_utc)
@@ -48,6 +74,7 @@ internal sealed class InventoryRepository(
             },
             unitOfWork.Transaction,
             cancellationToken: cancellationToken));
+    }
 
     public Task UpsertAsync(
         StockItem stock,

@@ -9,7 +9,7 @@ public sealed class ProcurementProcessManager(
     IProcurementRepository repository,
     IOutboxWriter outboxWriter)
 {
-    public Task ProcessGoodsReceiptAsync(
+    public Task ProcessQualityApprovalAsync(
         Guid eventId,
         Guid purchaseOrderId,
         CancellationToken cancellationToken = default) =>
@@ -18,7 +18,7 @@ public sealed class ProcurementProcessManager(
             {
                 var isNew = await inboxStore.TryAddAsync(
                     eventId,
-                    nameof(Contracts.IntegrationEvents.GoodsReceiptPostedIntegrationEvent),
+                    nameof(QualityInspectionApprovedIntegrationEvent),
                     transactionCancellationToken);
                 if (!isNew) return false;
 
@@ -26,7 +26,7 @@ public sealed class ProcurementProcessManager(
                     purchaseOrderId,
                     transactionCancellationToken)
                     ?? throw new InvalidOperationException(
-                        $"Purchase order '{purchaseOrderId}' was not found while processing goods receipt.");
+                        $"Purchase order '{purchaseOrderId}' was not found while processing quality approval.");
                 if (purchaseOrder.Status == Domain.PurchaseOrderStatus.Received) return true;
 
                 var materialRequest = await repository.GetMaterialRequestForUpdateAsync(
@@ -40,11 +40,11 @@ public sealed class ProcurementProcessManager(
                 await repository.UpdateMaterialRequestAsync(materialRequest, transactionCancellationToken);
                 await outboxWriter.AddAsync(
                     new ActivityNotificationRequestedIntegrationEvent(
-                        "warehouse.goods-receipt.posted",
+                        "warehouse.quality-inspection.passed",
                         "MaterialRequest",
                         materialRequest.Id,
-                        $"Material received for {materialRequest.RequestNumber}",
-                        $"Goods were received against purchase order {purchaseOrder.PurchaseOrderNumber}. The requisition is complete.",
+                        $"Material quality approved for {materialRequest.RequestNumber}",
+                        $"Received goods for purchase order {purchaseOrder.PurchaseOrderNumber} passed quality inspection. The requisition is complete.",
                         [materialRequest.RequestedByUserId],
                         ["procurement.purchase-order.read"]),
                     MessagingTopology.NotificationExchange,

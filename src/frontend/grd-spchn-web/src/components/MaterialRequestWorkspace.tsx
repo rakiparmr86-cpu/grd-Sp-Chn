@@ -13,6 +13,7 @@ import {
 import { hasPermission } from '../auth'
 import { PurchaseOrderPanel } from './PurchaseOrderPanel'
 import { VendorDispatchPanel } from './VendorDispatchPanel'
+import { GoodsReceiptPanel } from './GoodsReceiptPanel'
 
 interface MaterialRequestWorkspaceProps {
   session: LoginResponse
@@ -57,6 +58,9 @@ export function MaterialRequestWorkspace({
   const canCreatePurchaseOrder = hasPermission(session, 'procurement.purchase-order.create')
   const canReadPurchaseOrders = hasPermission(session, 'procurement.purchase-order.read')
   const canRecordDispatch = hasPermission(session, 'procurement.purchase-order.dispatch')
+  const canPostGoodsReceipt = hasPermission(session, 'warehouse.goods-receipt.post')
+  const canInspectQuality = hasPermission(session, 'warehouse.quality-inspection.post')
+  const canHandleReceiving = canPostGoodsReceipt || canInspectQuality
   const [actingRequestId, setActingRequestId] = useState<string | null>(null)
   const [purchaseOrderRequestId, setPurchaseOrderRequestId] = useState<string | null>(null)
   const [workflowMessage, setWorkflowMessage] = useState('')
@@ -65,6 +69,7 @@ export function MaterialRequestWorkspace({
   const [purchaseOrdersLoading, setPurchaseOrdersLoading] = useState(canReadPurchaseOrders)
   const [purchaseOrdersError, setPurchaseOrdersError] = useState('')
   const [dispatchOrder, setDispatchOrder] = useState<PurchaseOrder | null>(null)
+  const [receiptRequest, setReceiptRequest] = useState<MaterialRequestListItem | null>(null)
 
   useEffect(() => {
     let active = true
@@ -458,7 +463,7 @@ export function MaterialRequestWorkspace({
                   <th>Purchase order</th>
                   <th>Material dispatch</th>
                   <th>Created</th>
-                  {(canApproveRequest || canCreatePurchaseOrder || canRecordDispatch) && <th>Action</th>}
+                  {(canApproveRequest || canCreatePurchaseOrder || canRecordDispatch || canHandleReceiving) && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -495,7 +500,7 @@ export function MaterialRequestWorkspace({
                       )}
                     </td>
                     <td>{new Date(request.createdOnUtc).toLocaleDateString('en-IN')}</td>
-                    {(canApproveRequest || canCreatePurchaseOrder || canRecordDispatch) && (
+                    {(canApproveRequest || canCreatePurchaseOrder || canRecordDispatch || canHandleReceiving) && (
                       <td className="requisition-action-cell">
                         {request.status === 'Submitted' && canApproveRequest ? (
                           <button
@@ -528,9 +533,22 @@ export function MaterialRequestWorkspace({
                           >
                             Record dispatch
                           </button>
+                        ) : request.purchaseOrderId &&
+                            request.materialDispatched &&
+                            request.purchaseOrderStatus !== 'Received' &&
+                            canHandleReceiving ? (
+                          <button
+                            className="table-action-button table-action-button--primary"
+                            type="button"
+                            onClick={() => setReceiptRequest(request)}
+                          >
+                            Receive / quality
+                          </button>
                         ) : (
                           <span className="table-action-complete">
-                            {request.purchaseOrderCreated ? 'PO created' : 'No action'}
+                            {request.purchaseOrderStatus === 'Received'
+                              ? 'GRN posted'
+                              : request.purchaseOrderCreated ? 'PO created' : 'No action'}
                           </span>
                         )}
                       </td>
@@ -667,6 +685,30 @@ export function MaterialRequestWorkspace({
             setWorkflowMessage(`${purchaseOrder.purchaseOrderNumber} vendor dispatch was recorded and Warehouse was notified.`)
             void refreshRequests()
             void refreshPurchaseOrders()
+          }}
+        />
+      )}
+
+      {receiptRequest?.purchaseOrderId && (
+        <GoodsReceiptPanel
+          accessToken={session.accessToken}
+          purchaseOrderId={receiptRequest.purchaseOrderId}
+          purchaseOrderNumber={receiptRequest.purchaseOrderNumber}
+          catalogItems={catalogItems}
+          canInspectQuality={canInspectQuality}
+          onClose={() => setReceiptRequest(null)}
+          onQualityCompleted={(inspection) => {
+            const completedRequestId = receiptRequest.id
+            setReceiptRequest(null)
+            if (inspection.result === 'Passed') {
+              setWorkflowMessage('Quality passed. Approved material is being added to Inventory through RabbitMQ.')
+              setRequests((current) => current.map((request) => request.id === completedRequestId
+                ? { ...request, status: 'Received', purchaseOrderStatus: 'Received' }
+                : request))
+              window.setTimeout(() => void refreshRequests(), 1500)
+            } else {
+              setWorkflowMessage('Quality rejected the material. No usable Inventory was added; Purchase was notified.')
+            }
           }}
         />
       )}

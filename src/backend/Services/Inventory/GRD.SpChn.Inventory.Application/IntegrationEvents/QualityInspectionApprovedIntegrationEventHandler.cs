@@ -5,15 +5,16 @@ using MediatR;
 
 namespace GRD.SpChn.Inventory.Application.IntegrationEvents;
 
-public sealed class GoodsReceiptPostedIntegrationEventHandler(ISender sender)
-    : IIntegrationEventHandler<GoodsReceiptPostedIntegrationEvent>
+public sealed class QualityInspectionApprovedIntegrationEventHandler(ISender sender)
+    : IIntegrationEventHandler<QualityInspectionApprovedIntegrationEvent>
 {
     public async Task HandleAsync(
-        GoodsReceiptPostedIntegrationEvent integrationEvent,
+        QualityInspectionApprovedIntegrationEvent integrationEvent,
         CancellationToken cancellationToken = default)
     {
         var result = await sender.Send(new ReceivePurchasedStockCommand(
             integrationEvent.EventId,
+            integrationEvent.QualityInspectionId,
             integrationEvent.GoodsReceiptId,
             integrationEvent.DestinationOrganizationUnitId,
             integrationEvent.Items.Select(item =>

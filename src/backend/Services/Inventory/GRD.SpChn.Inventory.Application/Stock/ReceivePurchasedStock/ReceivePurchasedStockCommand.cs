@@ -6,6 +6,7 @@ namespace GRD.SpChn.Inventory.Application.Stock.ReceivePurchasedStock;
 
 public sealed record ReceivePurchasedStockCommand(
     Guid EventId,
+    Guid QualityInspectionId,
     Guid GoodsReceiptId,
     Guid DestinationOrganizationUnitId,
     IReadOnlyCollection<ReceivePurchasedStockItem> Items)

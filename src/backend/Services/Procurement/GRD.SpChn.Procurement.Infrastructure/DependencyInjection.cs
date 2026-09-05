@@ -25,11 +25,11 @@ public static class DependencyInjection
         services.AddScoped<IOutboxWriter, ProcurementOutboxWriter>();
         services.AddScoped<IInboxStore, ProcurementInboxStore>();
         services.AddRabbitMqConsumer<
-            GoodsReceiptPostedIntegrationEvent,
-            GoodsReceiptPostedIntegrationEventHandler>(
+            QualityInspectionApprovedIntegrationEvent,
+            QualityInspectionApprovedIntegrationEventHandler>(
             MessagingTopology.WarehouseExchange,
-            "procurement.goods-receipt-posted",
-            MessagingTopology.GoodsReceiptPostedRoutingKey);
+            "procurement.quality-inspection-approved",
+            MessagingTopology.QualityInspectionApprovedRoutingKey);
 
         return services;
     }

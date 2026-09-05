@@ -48,6 +48,8 @@ public static class ErpPermissions
     public const string InventoryStockRead = "inventory.stock.read";
     public const string GoodsReceiptRead = "warehouse.goods-receipt.read";
     public const string GoodsReceiptPost = "warehouse.goods-receipt.post";
+    public const string QualityInspectionRead = "warehouse.quality-inspection.read";
+    public const string QualityInspectionPost = "warehouse.quality-inspection.post";
 }
 
 public static class ErpPolicies
@@ -69,6 +71,8 @@ public static class ErpPolicies
     public const string InventoryStockRead = nameof(InventoryStockRead);
     public const string GoodsReceiptRead = nameof(GoodsReceiptRead);
     public const string GoodsReceiptPost = nameof(GoodsReceiptPost);
+    public const string QualityInspectionRead = nameof(QualityInspectionRead);
+    public const string QualityInspectionPost = nameof(QualityInspectionPost);
 }
 
 public sealed class JwtOptions
@@ -215,6 +219,8 @@ public static class SecurityDependencyInjection
             AddPermissionPolicy(authorization, ErpPolicies.InventoryStockRead, ErpPermissions.InventoryStockRead);
             AddPermissionPolicy(authorization, ErpPolicies.GoodsReceiptRead, ErpPermissions.GoodsReceiptRead);
             AddPermissionPolicy(authorization, ErpPolicies.GoodsReceiptPost, ErpPermissions.GoodsReceiptPost);
+            AddPermissionPolicy(authorization, ErpPolicies.QualityInspectionRead, ErpPermissions.QualityInspectionRead);
+            AddPermissionPolicy(authorization, ErpPolicies.QualityInspectionPost, ErpPermissions.QualityInspectionPost);
         });
 
         return services;

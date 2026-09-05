@@ -9,4 +9,15 @@ public interface IWarehouseRepository
     Task<ExpectedPurchaseOrder?> GetExpectedPurchaseOrderForUpdateAsync(Guid purchaseOrderId, CancellationToken cancellationToken = default);
     Task UpdateExpectedPurchaseOrderAsync(ExpectedPurchaseOrder order, CancellationToken cancellationToken = default);
     Task AddGoodsReceiptAsync(GoodsReceipt receipt, CancellationToken cancellationToken = default);
+    Task<GoodsReceipt?> GetGoodsReceiptByPurchaseOrderAsync(
+        Guid purchaseOrderId,
+        bool forUpdate = false,
+        CancellationToken cancellationToken = default);
+    Task<QualityInspection?> GetQualityInspectionByPurchaseOrderAsync(
+        Guid purchaseOrderId,
+        bool forUpdate = false,
+        CancellationToken cancellationToken = default);
+    Task AddQualityInspectionAsync(
+        QualityInspection inspection,
+        CancellationToken cancellationToken = default);
 }

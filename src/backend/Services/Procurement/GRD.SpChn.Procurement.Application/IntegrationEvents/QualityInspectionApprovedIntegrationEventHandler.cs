@@ -4,14 +4,14 @@ using GRD.SpChn.Procurement.Application.PurchaseOrders;
 
 namespace GRD.SpChn.Procurement.Application.IntegrationEvents;
 
-public sealed class GoodsReceiptPostedIntegrationEventHandler(
+public sealed class QualityInspectionApprovedIntegrationEventHandler(
     ProcurementProcessManager processManager)
-    : IIntegrationEventHandler<GoodsReceiptPostedIntegrationEvent>
+    : IIntegrationEventHandler<QualityInspectionApprovedIntegrationEvent>
 {
     public Task HandleAsync(
-        GoodsReceiptPostedIntegrationEvent integrationEvent,
+        QualityInspectionApprovedIntegrationEvent integrationEvent,
         CancellationToken cancellationToken = default) =>
-        processManager.ProcessGoodsReceiptAsync(
+        processManager.ProcessQualityApprovalAsync(
             integrationEvent.EventId,
             integrationEvent.PurchaseOrderId,
             cancellationToken);

@@ -45,4 +45,21 @@ public sealed class GoodsReceipt
             items,
             receivedOnUtc);
     }
+
+    public static GoodsReceipt Rehydrate(
+        Guid id,
+        string goodsReceiptNumber,
+        Guid purchaseOrderId,
+        Guid destinationOrganizationUnitId,
+        Guid receivedByUserId,
+        IReadOnlyCollection<ReceivedItem> items,
+        DateTime receivedOnUtc) =>
+        new(
+            id,
+            goodsReceiptNumber,
+            purchaseOrderId,
+            destinationOrganizationUnitId,
+            receivedByUserId,
+            items,
+            receivedOnUtc);
 }

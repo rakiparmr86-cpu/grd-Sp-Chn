@@ -182,6 +182,22 @@ export interface GoodsReceipt {
   items: ExpectedPurchaseOrderItem[]
 }
 
+export interface QualityInspection {
+  id: string
+  goodsReceiptId: string
+  purchaseOrderId: string
+  destinationOrganizationUnitId: string
+  inspectedByUserId: string
+  result: 'Passed' | 'Rejected'
+  notes: string | null
+  inspectedOnUtc: string
+}
+
+export interface QualityInspectionContext {
+  goodsReceipt: GoodsReceipt
+  inspection: QualityInspection | null
+}
+
 export interface Supplier {
   id: string
   code: string
@@ -359,20 +375,6 @@ export const api = {
       accessToken,
     ),
 
-  getSuppliers: (accessToken: string) =>
-    request<Supplier[]>(
-      '/api/suppliers/catalog',
-      {},
-      accessToken,
-    ),
-
-  getProcurementItems: (accessToken: string) =>
-    request<CatalogItem[]>(
-      '/api/products/items',
-      {},
-      accessToken,
-    ),
-
   getExpectedPurchaseOrder: (accessToken: string, purchaseOrderId: string) =>
     request<ExpectedPurchaseOrder>(
       `/api/warehouses/purchase-orders/${encodeURIComponent(purchaseOrderId)}`,
@@ -388,6 +390,39 @@ export const api = {
     request<GoodsReceipt>(
       `/api/warehouses/purchase-orders/${encodeURIComponent(purchaseOrderId)}/goods-receipts`,
       { method: 'POST', body: JSON.stringify({ items }) },
+      accessToken,
+    ),
+
+  getQualityInspection: (accessToken: string, purchaseOrderId: string) =>
+    request<QualityInspectionContext>(
+      `/api/warehouses/purchase-orders/${encodeURIComponent(purchaseOrderId)}/quality-inspection`,
+      {},
+      accessToken,
+    ),
+
+  completeQualityInspection: (
+    accessToken: string,
+    purchaseOrderId: string,
+    result: 'Passed' | 'Rejected',
+    notes: string | null,
+  ) =>
+    request<QualityInspection>(
+      `/api/warehouses/purchase-orders/${encodeURIComponent(purchaseOrderId)}/quality-inspection`,
+      { method: 'POST', body: JSON.stringify({ result, notes }) },
+      accessToken,
+    ),
+
+  getSuppliers: (accessToken: string) =>
+    request<Supplier[]>(
+      '/api/suppliers/catalog',
+      {},
+      accessToken,
+    ),
+
+  getProcurementItems: (accessToken: string) =>
+    request<CatalogItem[]>(
+      '/api/products/items',
+      {},
       accessToken,
     ),
 }
