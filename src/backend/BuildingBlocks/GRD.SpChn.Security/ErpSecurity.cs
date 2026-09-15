@@ -50,6 +50,11 @@ public static class ErpPermissions
     public const string GoodsReceiptPost = "warehouse.goods-receipt.post";
     public const string QualityInspectionRead = "warehouse.quality-inspection.read";
     public const string QualityInspectionPost = "warehouse.quality-inspection.post";
+    public const string AccountingPayableRead = "accounting.payable.read";
+    public const string AccountingInvoiceCreate = "accounting.invoice.create";
+    public const string AccountingPayableApprove = "accounting.payable.approve";
+    public const string AccountingPaymentRelease = "accounting.payment.release";
+    public const string AccountingJournalRead = "accounting.journal.read";
 }
 
 public static class ErpPolicies
@@ -73,6 +78,11 @@ public static class ErpPolicies
     public const string GoodsReceiptPost = nameof(GoodsReceiptPost);
     public const string QualityInspectionRead = nameof(QualityInspectionRead);
     public const string QualityInspectionPost = nameof(QualityInspectionPost);
+    public const string AccountingPayableRead = nameof(AccountingPayableRead);
+    public const string AccountingInvoiceCreate = nameof(AccountingInvoiceCreate);
+    public const string AccountingPayableApprove = nameof(AccountingPayableApprove);
+    public const string AccountingPaymentRelease = nameof(AccountingPaymentRelease);
+    public const string AccountingJournalRead = nameof(AccountingJournalRead);
 }
 
 public sealed class JwtOptions
@@ -221,6 +231,11 @@ public static class SecurityDependencyInjection
             AddPermissionPolicy(authorization, ErpPolicies.GoodsReceiptPost, ErpPermissions.GoodsReceiptPost);
             AddPermissionPolicy(authorization, ErpPolicies.QualityInspectionRead, ErpPermissions.QualityInspectionRead);
             AddPermissionPolicy(authorization, ErpPolicies.QualityInspectionPost, ErpPermissions.QualityInspectionPost);
+            AddPermissionPolicy(authorization, ErpPolicies.AccountingPayableRead, ErpPermissions.AccountingPayableRead);
+            AddPermissionPolicy(authorization, ErpPolicies.AccountingInvoiceCreate, ErpPermissions.AccountingInvoiceCreate);
+            AddPermissionPolicy(authorization, ErpPolicies.AccountingPayableApprove, ErpPermissions.AccountingPayableApprove);
+            AddPermissionPolicy(authorization, ErpPolicies.AccountingPaymentRelease, ErpPermissions.AccountingPaymentRelease);
+            AddPermissionPolicy(authorization, ErpPolicies.AccountingJournalRead, ErpPermissions.AccountingJournalRead);
         });
 
         return services;

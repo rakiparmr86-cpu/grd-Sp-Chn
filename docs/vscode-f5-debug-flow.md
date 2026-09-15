@@ -359,12 +359,13 @@ out. First verify container health and restart only the affected .NET process.
 Development errors from all backend processes are written to:
 
 ```text
-logs/grd-errors-YYYYMMDD.log
+logs/grd-exceptions.log
 ```
 
-The service name, trace ID, span ID, message, and exception stack identify which
-process failed. This is especially useful for Gateway calls because one trace can
-show both the Gateway error and the downstream service error.
+Each exception begins with a date/time separator. The service name, trace ID, span
+ID, message, and exception stack identify which process failed. This is especially
+useful for Gateway calls because one trace can show both the Gateway error and the
+downstream service error.
 
 ## 11. Common questions answered
 

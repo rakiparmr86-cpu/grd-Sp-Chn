@@ -19,9 +19,7 @@ public static class ServiceDefaultsExtensions
 {
     private const string LiveTag = "live";
     private const string SolutionFileName = "GRD.SpChn.sln";
-    private const string DefaultErrorLogFileName = "grd-errors-.log";
-    private const long DefaultErrorLogSizeLimitBytes = 20 * 1024 * 1024;
-    private const int DefaultRetainedErrorLogFileCount = 14;
+    private const string DefaultErrorLogFileName = "grd-exceptions.log";
 
     /// <summary>
     /// Registers structured logging for HTTP services and background workers.
@@ -55,14 +53,15 @@ public static class ServiceDefaultsExtensions
                     errorLogPath,
                     restrictedToMinimumLevel: LogEventLevel.Error,
                     outputTemplate:
-                        "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} " +
+                        "{NewLine}-----------------------------------" +
+                        "{Timestamp:dd-MMM-yy} time {Timestamp:hh:mm:ss tt}" +
+                        "-----------------------------------{NewLine}" +
                         "[{Level:u3}] [{Service}] [TraceId:{TraceId}] " +
                         "[SpanId:{SpanId}] [{SourceContext}] " +
                         "{Message:lj}{NewLine}{Exception}",
-                    fileSizeLimitBytes: DefaultErrorLogSizeLimitBytes,
-                    rollOnFileSizeLimit: true,
-                    retainedFileCountLimit: DefaultRetainedErrorLogFileCount,
-                    rollingInterval: RollingInterval.Day,
+                    fileSizeLimitBytes: null,
+                    rollOnFileSizeLimit: false,
+                    rollingInterval: RollingInterval.Infinite,
                     shared: true,
                     flushToDiskInterval: TimeSpan.FromSeconds(1));
             }

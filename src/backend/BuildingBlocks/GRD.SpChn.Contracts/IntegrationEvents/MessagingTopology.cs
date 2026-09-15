@@ -7,6 +7,7 @@ public static class MessagingTopology
     public const string ProcurementExchange = "procurement.events";
     public const string WarehouseExchange = "warehouse.events";
     public const string NotificationExchange = "notification.events";
+    public const string AccountingExchange = "accounting.events";
 
     public const string OrderPlacedRoutingKey = "order.placed";
     public const string StockReservedRoutingKey = "inventory.stock-reserved";
@@ -15,4 +16,5 @@ public static class MessagingTopology
     public const string GoodsReceiptPostedRoutingKey = "warehouse.goods-receipt-posted";
     public const string QualityInspectionApprovedRoutingKey = "warehouse.quality-inspection-approved";
     public const string NotificationRequestedRoutingKey = "notification.requested";
+    public const string VendorPaymentReleasedRoutingKey = "accounting.vendor-payment-released";
 }

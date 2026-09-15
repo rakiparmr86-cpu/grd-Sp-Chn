@@ -236,26 +236,23 @@ and do not listen on HTTP ports.
 
 ## Shared exception log
 
-In Development, every backend API and worker writes Error and Fatal events to one
-daily rolling text file under the repository root:
+In Development, every backend API and worker writes only Error and Fatal events to
+one shared text file under the repository root:
 
 ```text
-logs/grd-errors-YYYYMMDD.log
+logs/grd-exceptions.log
 ```
 
-Each entry contains the timestamp, severity, service name, trace ID, span ID, source
-context, message, and full exception stack trace. The file sink is configured for
-safe multi-process sharing, rolls again when it reaches approximately 20 MB, and
-retains 14 files. The `logs` directory is ignored by Git.
+Each entry begins with a visible `dd-MMM-yy time hh:mm:ss AM/PM` separator and then
+contains severity, service name, trace ID, span ID, source context, message, and full
+exception stack trace. The sink is configured for safe multi-process sharing and
+does not create daily files. Archive or truncate it through an operational log
+retention job when required. The `logs` directory is ignored by Git.
 
 Follow the current log from PowerShell:
 
 ```powershell
-$latestErrorLog = Get-ChildItem .\logs\grd-errors-*.log |
-    Sort-Object LastWriteTime |
-    Select-Object -Last 1
-
-Get-Content $latestErrorLog.FullName -Tail 100 -Wait
+Get-Content .\logs\grd-exceptions.log -Tail 100 -Wait
 ```
 
 File logging defaults to enabled only in Development. Override it with environment
@@ -263,7 +260,7 @@ variables when required:
 
 ```powershell
 $env:Observability__FileLogging__Enabled = "true"
-$env:Observability__FileLogging__ErrorLogPath = "D:\logs\grd-errors-.log"
+$env:Observability__FileLogging__ErrorLogPath = "D:\logs\grd-exceptions.log"
 ```
 
 ## Why the previous process conflict happened
