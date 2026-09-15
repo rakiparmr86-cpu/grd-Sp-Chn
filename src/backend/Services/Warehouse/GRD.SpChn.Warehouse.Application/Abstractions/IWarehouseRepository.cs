@@ -13,8 +13,12 @@ public interface IWarehouseRepository
         Guid purchaseOrderId,
         bool forUpdate = false,
         CancellationToken cancellationToken = default);
-    Task<QualityInspection?> GetQualityInspectionByPurchaseOrderAsync(
+    Task<GoodsReceipt?> GetGoodsReceiptAwaitingInspectionByPurchaseOrderAsync(
         Guid purchaseOrderId,
+        bool forUpdate = false,
+        CancellationToken cancellationToken = default);
+    Task<QualityInspection?> GetQualityInspectionByGoodsReceiptAsync(
+        Guid goodsReceiptId,
         bool forUpdate = false,
         CancellationToken cancellationToken = default);
     Task AddQualityInspectionAsync(

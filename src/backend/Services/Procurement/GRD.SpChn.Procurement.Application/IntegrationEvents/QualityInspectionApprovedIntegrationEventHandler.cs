@@ -14,5 +14,6 @@ public sealed class QualityInspectionApprovedIntegrationEventHandler(
         processManager.ProcessQualityApprovalAsync(
             integrationEvent.EventId,
             integrationEvent.PurchaseOrderId,
+            integrationEvent.CompletesPurchaseOrder,
             cancellationToken);
 }

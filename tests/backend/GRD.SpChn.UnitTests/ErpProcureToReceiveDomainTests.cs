@@ -117,7 +117,7 @@ public sealed class ErpProcureToReceiveDomainTests
     }
 
     [Fact]
-    public void Warehouse_receipt_must_match_PO_and_receiving_location()
+    public void Warehouse_receipt_must_not_exceed_PO_and_must_match_receiving_location()
     {
         var productId = Guid.NewGuid();
         var locationId = Guid.NewGuid();
@@ -140,7 +140,45 @@ public sealed class ErpProcureToReceiveDomainTests
             [new ReceivedItem(productId, 50, "KG")]);
 
         Assert.Equal(ExpectedPurchaseOrderStatus.Received, expected.Status);
+        Assert.True(receipt.CompletesPurchaseOrder);
         Assert.Equal(locationId, receipt.DestinationOrganizationUnitId);
+    }
+
+    [Fact]
+    public void Warehouse_supports_partial_receipts_and_tracks_the_remaining_quantity()
+    {
+        var productId = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        var expected = ExpectedPurchaseOrder.Register(
+            Guid.NewGuid(),
+            "PO-PARTIAL-001",
+            Guid.NewGuid(),
+            locationId,
+            [new ExpectedPurchaseOrderItem(productId, 50, "KG")],
+            DateTime.UtcNow);
+
+        var firstReceipt = expected.Receive(
+            locationId,
+            Guid.NewGuid(),
+            [new ReceivedItem(productId, 30, "KG")]);
+
+        Assert.Equal(ExpectedPurchaseOrderStatus.PartiallyReceived, expected.Status);
+        Assert.False(firstReceipt.CompletesPurchaseOrder);
+        Assert.Equal(30, expected.Items.Single().ReceivedQuantity);
+        Assert.Equal(20, expected.Items.Single().RemainingQuantity);
+        Assert.Throws<ArgumentException>(() => expected.Receive(
+            locationId,
+            Guid.NewGuid(),
+            [new ReceivedItem(productId, 21, "KG")]));
+
+        var finalReceipt = expected.Receive(
+            locationId,
+            Guid.NewGuid(),
+            [new ReceivedItem(productId, 20, "KG")]);
+
+        Assert.Equal(ExpectedPurchaseOrderStatus.Received, expected.Status);
+        Assert.True(finalReceipt.CompletesPurchaseOrder);
+        Assert.Equal(0, expected.Items.Single().RemainingQuantity);
     }
 
     [Fact]

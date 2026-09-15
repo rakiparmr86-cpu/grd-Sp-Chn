@@ -1,13 +1,18 @@
-using GRD.SpChn.Inventory.Application;
-using GRD.SpChn.Inventory.Infrastructure;
 using GRD.SpChn.Observability;
 using GRD.SpChn.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+GRD.SpChn.Inventory.Application.DependencyInjection.AddApplication(builder.Services);
+GRD.SpChn.Warehouse.Application.DependencyInjection.AddApplication(builder.Services);
+GRD.SpChn.Inventory.Infrastructure.DependencyInjection.AddInfrastructure(
+    builder.Services,
+    builder.Configuration);
+GRD.SpChn.Warehouse.Infrastructure.DependencyInjection.AddInfrastructure(
+    builder.Services,
+    builder.Configuration,
+    registerSharedInfrastructure: false);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddErpAuthentication(builder.Configuration);

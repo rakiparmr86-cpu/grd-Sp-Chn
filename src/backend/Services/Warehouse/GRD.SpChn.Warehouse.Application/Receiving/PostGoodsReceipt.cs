@@ -37,6 +37,17 @@ internal sealed class PostGoodsReceiptCommandHandler(
                 $"Purchase order '{request.PurchaseOrderId}' has not reached this warehouse."));
         }
 
+        var pendingInspection = await repository.GetGoodsReceiptAwaitingInspectionByPurchaseOrderAsync(
+            request.PurchaseOrderId,
+            forUpdate: true,
+            cancellationToken);
+        if (pendingInspection is not null)
+        {
+            return Result<GoodsReceiptResponse>.Failure(Error.Conflict(
+                "Warehouse.QualityInspectionPending",
+                $"Complete quality inspection for {pendingInspection.GoodsReceiptNumber} before posting another receipt."));
+        }
+
         try
         {
             var receipt = expected.Receive(

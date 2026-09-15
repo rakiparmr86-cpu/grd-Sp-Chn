@@ -11,7 +11,7 @@ Several services need related data, but allowing them to share tables makes owne
 unclear. A consumer could bypass domain rules, a schema deployment could break
 another service, and independent recovery would become impossible.
 
-Local development currently permits Order Management and Inventory tables in one
+Local development currently permits Order Management and Inventory Management tables in one
 physical MySQL database for convenience. Table prefixes alone do not grant ownership
 to another service.
 
@@ -42,6 +42,13 @@ For the v1 vertical slice:
 | Order Inbox and Outbox | Order Management |
 | Stock quantities | Inventory |
 | Inventory Inbox and Outbox | Inventory |
+| Expected PO, GRN, quarantine and quality rows | Inventory Management (Warehouse module) |
+| Location stock and quality-release movements | Inventory Management (Stock module) |
+
+ADR 0005 makes Warehouse an internal module of the Inventory Management deployable.
+Its `warehouse_*` prefix is a module/schema convention, not a separate service owner.
+The two modules may participate in one local transaction; this does not permit
+Procurement, Supplier, Accounting or Reporting to access those tables directly.
 
 ## Alternatives considered
 
@@ -78,6 +85,8 @@ be introduced according to operational needs.
 
 - Connection strings are service-specific in production.
 - Database users receive permissions only for their service database.
-- Code review rejects SQL that targets another service's tables.
+- Code review rejects SQL that targets another deployable service's tables. Internal
+  modules may share a transaction only when an ADR explicitly assigns them to the
+  same deployable and data owner.
 - Reporting consumes events or approved export pipelines.
 - Integration tests verify that consumers update only their owned schema.

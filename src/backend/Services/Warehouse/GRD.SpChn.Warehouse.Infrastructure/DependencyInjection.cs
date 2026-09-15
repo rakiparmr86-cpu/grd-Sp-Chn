@@ -15,13 +15,19 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        bool registerSharedInfrastructure = true)
     {
-        services.AddMySqlPersistence(configuration);
-        services.AddRabbitMqEventBus(configuration);
+        if (registerSharedInfrastructure)
+        {
+            services.AddMySqlPersistence(configuration);
+            services.AddRabbitMqEventBus(configuration);
+        }
+
         services.AddScoped<WarehouseUnitOfWork>();
         services.AddScoped<IWarehouseUnitOfWork>(provider => provider.GetRequiredService<WarehouseUnitOfWork>());
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+        services.AddScoped<IInventoryReleaseWriter, InventoryReleaseWriter>();
         services.AddScoped<IWarehouseInboxStore, WarehouseInboxStore>();
         services.AddScoped<IWarehouseOutboxWriter, WarehouseOutboxWriter>();
         services.AddRabbitMqConsumer<

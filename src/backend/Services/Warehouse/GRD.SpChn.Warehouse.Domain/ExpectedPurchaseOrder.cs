@@ -3,17 +3,22 @@ namespace GRD.SpChn.Warehouse.Domain;
 public enum ExpectedPurchaseOrderStatus
 {
     Expected,
+    PartiallyReceived,
     Received
 }
 
 public sealed record ExpectedPurchaseOrderItem(
     Guid ProductId,
     decimal Quantity,
-    string UnitOfMeasure);
+    string UnitOfMeasure,
+    decimal ReceivedQuantity = 0)
+{
+    public decimal RemainingQuantity => Quantity - ReceivedQuantity;
+}
 
 public sealed class ExpectedPurchaseOrder
 {
-    private readonly IReadOnlyCollection<ExpectedPurchaseOrderItem> _items;
+    private IReadOnlyCollection<ExpectedPurchaseOrderItem> _items;
 
     private ExpectedPurchaseOrder(
         Guid purchaseOrderId,
@@ -87,34 +92,50 @@ public sealed class ExpectedPurchaseOrder
         IReadOnlyCollection<ReceivedItem> receivedItems,
         DateTime? utcNow = null)
     {
-        if (Status != ExpectedPurchaseOrderStatus.Expected)
+        if (Status == ExpectedPurchaseOrderStatus.Received)
             throw new InvalidOperationException($"Purchase order {PurchaseOrderId} is already {Status}.");
         if (receiverOrganizationUnitId != DestinationOrganizationUnitId)
             throw new UnauthorizedAccessException("The user is not assigned to this receiving location.");
         if (receivedByUserId == Guid.Empty) throw new ArgumentException("A receiving user is required.", nameof(receivedByUserId));
-        var receivedByProduct = receivedItems.ToDictionary(item => item.ProductId);
-        if (receivedByProduct.Count != Items.Count)
-            throw new ArgumentException("Version 1 requires a complete receipt for every PO line.", nameof(receivedItems));
-        foreach (var expected in Items)
+        if (receivedItems is null || receivedItems.Count == 0)
+            throw new ArgumentException("Enter at least one received quantity.", nameof(receivedItems));
+        if (receivedItems.Select(item => item.ProductId).Distinct().Count() != receivedItems.Count)
+            throw new ArgumentException("A product can appear only once in a goods receipt.", nameof(receivedItems));
+
+        var expectedByProduct = Items.ToDictionary(item => item.ProductId);
+        foreach (var received in receivedItems)
         {
-            if (!receivedByProduct.TryGetValue(expected.ProductId, out var received) ||
-                received.Quantity != expected.Quantity ||
-                !string.Equals(received.UnitOfMeasure, expected.UnitOfMeasure, StringComparison.OrdinalIgnoreCase))
-            {
+            if (!expectedByProduct.TryGetValue(received.ProductId, out var expected))
+                throw new ArgumentException($"Product {received.ProductId} is not on this purchase order.", nameof(receivedItems));
+            if (received.Quantity <= 0)
+                throw new ArgumentException($"Received quantity for product {received.ProductId} must be greater than zero.", nameof(receivedItems));
+            if (!string.Equals(received.UnitOfMeasure, expected.UnitOfMeasure, StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException(
-                    $"Received product {expected.ProductId} must exactly match the PO quantity and unit.",
+                    $"Received product {expected.ProductId} must use PO unit {expected.UnitOfMeasure}.",
                     nameof(receivedItems));
-            }
+            if (received.Quantity > expected.RemainingQuantity)
+                throw new ArgumentException(
+                    $"Received quantity {received.Quantity} for product {received.ProductId} exceeds remaining PO quantity {expected.RemainingQuantity}.",
+                    nameof(receivedItems));
         }
 
         var now = utcNow ?? DateTime.UtcNow;
-        Status = ExpectedPurchaseOrderStatus.Received;
+        var receivedByProduct = receivedItems.ToDictionary(item => item.ProductId);
+        _items = Items.Select(item => receivedByProduct.TryGetValue(item.ProductId, out var received)
+                ? item with { ReceivedQuantity = item.ReceivedQuantity + received.Quantity }
+                : item)
+            .ToArray();
+        var completesPurchaseOrder = Items.All(item => item.RemainingQuantity == 0);
+        Status = completesPurchaseOrder
+            ? ExpectedPurchaseOrderStatus.Received
+            : ExpectedPurchaseOrderStatus.PartiallyReceived;
         UpdatedOnUtc = now;
         return GoodsReceipt.Create(
             PurchaseOrderId,
             DestinationOrganizationUnitId,
             receivedByUserId,
             receivedItems,
+            completesPurchaseOrder,
             now);
     }
 }

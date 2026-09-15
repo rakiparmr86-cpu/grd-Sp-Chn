@@ -256,7 +256,8 @@ public sealed class IntegrationEventContractTests
             receipt.PurchaseOrderId,
             destinationId,
             Guid.NewGuid(),
-            [new QualityApprovedItem(productId, 50, "KG")]);
+            [new QualityApprovedItem(productId, 50, "KG")],
+            true);
         var qualityApprovalCopy = RoundTrip(qualityApproval);
 
         AssertEnvelopeEqual(issued, issuedCopy);
@@ -267,6 +268,7 @@ public sealed class IntegrationEventContractTests
         Assert.Equal(50, receiptCopy.Items.Single().Quantity);
         AssertEnvelopeEqual(qualityApproval, qualityApprovalCopy);
         Assert.Equal(receipt.GoodsReceiptId, qualityApprovalCopy.GoodsReceiptId);
+        Assert.True(qualityApprovalCopy.CompletesPurchaseOrder);
         Assert.Equal(50, qualityApprovalCopy.Items.Single().Quantity);
     }
 

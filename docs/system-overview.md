@@ -19,7 +19,8 @@ design rules, see [`event-driven-development.md`](event-driven-development.md).
 
 | Category | Count | Explanation |
 | --- | ---: | --- |
-| Business service boundaries | 13 | Delivery, Identity, Inventory, Notifications, Order Management, Organization, Procurement, Product Catalog, Reporting, Shipment, Supplier, Transportation, and Warehouse. |
+| Business modules | 13 | Warehouse remains a code module but is co-hosted with Inventory in one deployable. |
+| Active service API processes | 12 | Inventory and Warehouse share the Inventory API process on port 5018. |
 | Projects per service | 4 | Each service has `.Api`, `.Application`, `.Domain`, and `.Infrastructure`. |
 | Service projects | 52 | 13 services multiplied by four layers. |
 | API Gateway projects/processes | 1 | YARP public entry point. |
@@ -32,12 +33,12 @@ design rules, see [`event-driven-development.md`](event-driven-development.md).
 When every executable is enabled locally, the runtime consists of:
 
 ```text
-14 backend HTTP processes = 1 API Gateway + 13 service APIs
+13 backend HTTP processes = 1 API Gateway + 12 service APIs
  1 frontend HTTP process = React/Vite web UI
  3 worker processes
  2 infrastructure containers = MySQL + RabbitMQ
 ---------------------------------------------------
-20 runtime processes/containers in the full local landscape
+19 runtime processes/containers in the full local landscape
 ```
 
 Building blocks, Domain, Application, Infrastructure, and test projects compile to
@@ -72,7 +73,7 @@ The Gateway also exposes its own `/`, `/health/live`, and `/health/ready` endpoi
 | Service process | Port | Gateway path | Status | Current responsibility |
 | --- | ---: | --- | --- | --- |
 | `GRD.SpChn.OrderManagement.Api` | 5255 | `/orders/{**catch-all}` | **Implemented** | Accepts orders, returns `Pending`, exposes order-status queries, consumes Inventory reservation results, and confirms/cancels Orders. |
-| `GRD.SpChn.Inventory.Api` | 5018 | `/api/inventory/{**catch-all}` | **Implemented** | Handles the sales-order reservation flow and consumes Warehouse GRNs to maintain location/product stock. |
+| `GRD.SpChn.Inventory.Api` | 5018 | `/api/inventory/*` and `/api/warehouses/*` | **Implemented** | Single Inventory Management deployable: sales-order reservation, expected PO, GRN/partial receipt, quarantine, quality inspection, stock movement and location balance. |
 | `GRD.SpChn.Identity.Api` | 7001 | `/api/identity/{**catch-all}` | **Partial** | Authenticates PBKDF2-backed users; resolves role and permissions from database-owned access-profile tables; issues organization/role/permission JWTs; lets authorized HR Managers create operational users; and lets Directors atomically manage profile permissions from a validated catalog. Refresh, revocation, audit and production key management remain. |
 | `GRD.SpChn.Notifications.Api` | 7002 | `/api/notifications/{**catch-all}` | **Partial** | Has health/sample endpoints. Email, SMS, templates, delivery status, and event consumers are not implemented. |
 | `GRD.SpChn.ProductCatalog.Api` | 5006 | `/api/products/{**catch-all}` | **Scaffold** | Intended to own product definitions, attributes, and catalog queries; currently only template behavior exists. |
@@ -82,7 +83,6 @@ The Gateway also exposes its own `/`, `/health/live`, and `/health/ready` endpoi
 | `GRD.SpChn.Organization.Api` | 5218 | `/api/organization/{**catch-all}` | **Partial** | Owns and validates Enterprise, office, branch, plant, warehouse, sales and consumption-unit hierarchy nodes. Hierarchical access grants remain. |
 | `GRD.SpChn.Transportation.Api` | 5258 | `/api/transportation/{**catch-all}` | **Scaffold** | Intended to own transportation planning/tracking; currently only template behavior exists. |
 | `GRD.SpChn.Reporting.Api` | 5274 | `/api/reports/{**catch-all}` | **Scaffold** | Intended to expose reporting/read-model queries; currently only template behavior exists. |
-| `GRD.SpChn.Warehouse.Api` | 5276 | `/api/warehouses/{**catch-all}` | **Implemented** | Consumes issued POs, creates expected receipts through Inbox, posts complete GRNs and publishes them through Outbox. |
 | `GRD.SpChn.Delivery.Api` | 5294 | `/api/delivery/{**catch-all}` | **Scaffold** | Intended to own last-mile delivery execution/status; currently only template behavior exists. |
 
 Every service API also maps common `/health/live` and `/health/ready` endpoints through
@@ -97,7 +97,7 @@ Every service API also maps common `/health/live` and `/health/ready` endpoints 
 | `GRD.SpChn.ProjectionBuilder` | None | **Scaffold** | Registers MySQL/RabbitMQ building blocks but currently only writes a timed heartbeat log. It does not build a read projection yet. |
 
 RabbitMQ consumers for the implemented vertical slice do not run in these scaffold
-workers. They are hosted inside the Inventory API and Order Management API processes.
+workers. They are hosted inside the owning service API processes.
 
 ### Infrastructure containers
 
@@ -109,7 +109,7 @@ workers. They are hosted inside the Inventory API and Order Management API proce
 
 ## Minimum processes for the implemented order workflow
 
-You do not need all 20 runtime components to test the current vertical slice. Enable:
+You do not need all 19 runtime components to test the current vertical slice. Enable:
 
 ```text
 MySQL container
@@ -249,7 +249,7 @@ business-logic monolith.
 | Security | JWT bearer authentication + permission policies | Identity issues organization-scoped development tokens; protected ERP endpoints validate them. |
 | Logging | Serilog.AspNetCore 10 | Shared observability defaults and console/request logs. |
 | Health | ASP.NET Core Health Checks | `/health/live` and `/health/ready`. |
-| API discovery and testing | ASP.NET Core OpenAPI + Swashbuckle Swagger UI | Development-only `/swagger` on every API, with base-address redirects. Gateway `/swagger` provides a dark, same-origin selector for all 13 service documents. |
+| API discovery and testing | ASP.NET Core OpenAPI + Swashbuckle Swagger UI | Development-only `/swagger` on every active API, with base-address redirects. Gateway `/swagger` exposes the combined Inventory/Warehouse document once. |
 | Local infrastructure | Docker Compose | MySQL and RabbitMQ. |
 | Tests | xUnit | Unit, contract, architecture, and integration test projects. |
 | Local orchestration | PowerShell + VS Code tasks | `scripts/start-local-services.ps1` and `.vscode/tasks.json`. |

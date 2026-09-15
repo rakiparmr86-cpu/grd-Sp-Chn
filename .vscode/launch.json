@@ -80,29 +80,7 @@
       }
     },
     {
-      "name": "GRD: Warehouse API (5276)",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "GRD: Debug prepare Warehouse",
-      "program": "${workspaceFolder}\\src\\backend\\Services\\Warehouse\\GRD.SpChn.Warehouse.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Warehouse.Api.dll",
-      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Warehouse\\GRD.SpChn.Warehouse.Api",
-      "launchSettingsProfile": "http",
-      "console": "integratedTerminal",
-      "stopAtEntry": false,
-      "justMyCode": true,
-      "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "DOTNET_ENVIRONMENT": "Development",
-        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
-        "ConnectionStrings__WarehouseDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
-        "RabbitMq__HostName": "localhost",
-        "RabbitMq__Port": "5672",
-        "RabbitMq__UserName": "grd",
-        "RabbitMq__Password": "grd-local"
-      }
-    },
-    {
-      "name": "GRD: Inventory API (5018)",
+      "name": "GRD: Inventory + Warehouse API (5018)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "GRD: Debug prepare Inventory",
@@ -350,22 +328,6 @@
       "presentation": { "hidden": true }
     },
     {
-      "name": "GRD internal: Warehouse",
-      "type": "coreclr",
-      "request": "launch",
-      "program": "${workspaceFolder}\\src\\backend\\Services\\Warehouse\\GRD.SpChn.Warehouse.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Warehouse.Api.dll",
-      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Warehouse\\GRD.SpChn.Warehouse.Api",
-      "launchSettingsProfile": "http",
-      "console": "integratedTerminal",
-      "justMyCode": true,
-      "env": {
-        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
-        "ConnectionStrings__WarehouseDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
-        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
-      },
-      "presentation": { "hidden": true }
-    },
-    {
       "name": "GRD internal: OutboxPublisher",
       "type": "coreclr",
       "request": "launch",
@@ -432,7 +394,6 @@
         "GRD internal: Shipment",
         "GRD internal: Supplier",
         "GRD internal: Transportation",
-        "GRD internal: Warehouse",
         "GRD internal: OutboxPublisher",
         "GRD internal: EventProcessor",
         "GRD internal: ProjectionBuilder"

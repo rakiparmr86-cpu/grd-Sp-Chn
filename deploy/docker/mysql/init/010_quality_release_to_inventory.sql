@@ -1,5 +1,6 @@
--- Physical receipt is quarantined in Warehouse until Quality releases it.
--- Inventory is updated only from the quality-approved integration event.
+-- Physical receipt is quarantined until Quality releases it.
+-- In the merged Inventory/Warehouse deployable, Quality and Inventory use one
+-- local transaction; the integration event is for external services only.
 
 CREATE TABLE IF NOT EXISTS warehouse_quality_inspections
 (

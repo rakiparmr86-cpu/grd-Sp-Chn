@@ -20,13 +20,17 @@ public sealed record ExpectedPurchaseOrderResponse(
             order.Items.Select(item => new ExpectedPurchaseOrderItemResponse(
                 item.ProductId,
                 item.Quantity,
-                item.UnitOfMeasure)).ToArray());
+                item.UnitOfMeasure,
+                item.ReceivedQuantity,
+                item.RemainingQuantity)).ToArray());
 }
 
 public sealed record ExpectedPurchaseOrderItemResponse(
     Guid ProductId,
     decimal Quantity,
-    string UnitOfMeasure);
+    string UnitOfMeasure,
+    decimal ReceivedQuantity,
+    decimal RemainingQuantity);
 
 public sealed record GoodsReceiptResponse(
     Guid Id,
@@ -34,8 +38,9 @@ public sealed record GoodsReceiptResponse(
     Guid PurchaseOrderId,
     Guid DestinationOrganizationUnitId,
     Guid ReceivedByUserId,
+    bool CompletesPurchaseOrder,
     DateTime ReceivedOnUtc,
-    IReadOnlyCollection<ExpectedPurchaseOrderItemResponse> Items)
+    IReadOnlyCollection<GoodsReceiptItemResponse> Items)
 {
     public static GoodsReceiptResponse From(GoodsReceipt receipt) =>
         new(
@@ -44,9 +49,15 @@ public sealed record GoodsReceiptResponse(
             receipt.PurchaseOrderId,
             receipt.DestinationOrganizationUnitId,
             receipt.ReceivedByUserId,
+            receipt.CompletesPurchaseOrder,
             receipt.ReceivedOnUtc,
-            receipt.Items.Select(item => new ExpectedPurchaseOrderItemResponse(
+            receipt.Items.Select(item => new GoodsReceiptItemResponse(
                 item.ProductId,
                 item.Quantity,
                 item.UnitOfMeasure)).ToArray());
 }
+
+public sealed record GoodsReceiptItemResponse(
+    Guid ProductId,
+    decimal Quantity,
+    string UnitOfMeasure);

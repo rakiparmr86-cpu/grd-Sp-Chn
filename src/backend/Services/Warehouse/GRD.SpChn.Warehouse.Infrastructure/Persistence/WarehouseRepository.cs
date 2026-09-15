@@ -83,10 +83,12 @@ internal sealed class WarehouseRepository(
             """
             INSERT INTO warehouse_goods_receipts
                 (id, goods_receipt_number, purchase_order_id,
-                 destination_organization_unit_id, received_by_user_id, received_on_utc)
+                 destination_organization_unit_id, received_by_user_id,
+                 completes_purchase_order, received_on_utc)
             VALUES
                 (@Id, @GoodsReceiptNumber, @PurchaseOrderId,
-                 @DestinationOrganizationUnitId, @ReceivedByUserId, @ReceivedOnUtc);
+                 @DestinationOrganizationUnitId, @ReceivedByUserId,
+                 @CompletesPurchaseOrder, @ReceivedOnUtc);
             """,
             receipt,
             unitOfWork.Transaction,
@@ -117,15 +119,36 @@ internal sealed class WarehouseRepository(
                 unitOfWork.Transaction,
                 purchaseOrderId,
                 true,
+                false,
                 cancellationToken);
         }
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
-        return await LoadGoodsReceiptAsync(connection, null, purchaseOrderId, false, cancellationToken);
+        return await LoadGoodsReceiptAsync(connection, null, purchaseOrderId, false, false, cancellationToken);
     }
 
-    public async Task<QualityInspection?> GetQualityInspectionByPurchaseOrderAsync(
+    public async Task<GoodsReceipt?> GetGoodsReceiptAwaitingInspectionByPurchaseOrderAsync(
         Guid purchaseOrderId,
+        bool forUpdate = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (forUpdate)
+        {
+            return await LoadGoodsReceiptAsync(
+                unitOfWork.Connection,
+                unitOfWork.Transaction,
+                purchaseOrderId,
+                true,
+                true,
+                cancellationToken);
+        }
+
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        return await LoadGoodsReceiptAsync(connection, null, purchaseOrderId, false, true, cancellationToken);
+    }
+
+    public async Task<QualityInspection?> GetQualityInspectionByGoodsReceiptAsync(
+        Guid goodsReceiptId,
         bool forUpdate = false,
         CancellationToken cancellationToken = default)
     {
@@ -145,9 +168,9 @@ internal sealed class WarehouseRepository(
                        notes AS Notes,
                        inspected_on_utc AS InspectedOnUtc
                 FROM warehouse_quality_inspections
-                WHERE purchase_order_id = @PurchaseOrderId
+                WHERE goods_receipt_id = @GoodsReceiptId
                 """ + (forUpdate ? " FOR UPDATE;" : ";"),
-                new { PurchaseOrderId = purchaseOrderId },
+                new { GoodsReceiptId = goodsReceiptId },
                 forUpdate ? unitOfWork.Transaction : null,
                 cancellationToken: cancellationToken));
             return row is null
@@ -201,19 +224,27 @@ internal sealed class WarehouseRepository(
         DbTransaction? transaction,
         Guid purchaseOrderId,
         bool forUpdate,
+        bool awaitingInspection,
         CancellationToken cancellationToken)
     {
+        var pendingClause = awaitingInspection
+            ? " AND NOT EXISTS (SELECT 1 FROM warehouse_quality_inspections qi WHERE qi.goods_receipt_id = gr.id)"
+            : string.Empty;
+        var lockClause = forUpdate ? " FOR UPDATE" : string.Empty;
         var row = await connection.QuerySingleOrDefaultAsync<GoodsReceiptRow>(new CommandDefinition(
-            """
-            SELECT id AS Id,
-                   goods_receipt_number AS GoodsReceiptNumber,
-                   purchase_order_id AS PurchaseOrderId,
-                   destination_organization_unit_id AS DestinationOrganizationUnitId,
-                   received_by_user_id AS ReceivedByUserId,
-                   received_on_utc AS ReceivedOnUtc
-            FROM warehouse_goods_receipts
-            WHERE purchase_order_id = @PurchaseOrderId
-            """ + (forUpdate ? " FOR UPDATE;" : ";"),
+            $"""
+            SELECT gr.id AS Id,
+                   gr.goods_receipt_number AS GoodsReceiptNumber,
+                   gr.purchase_order_id AS PurchaseOrderId,
+                   gr.destination_organization_unit_id AS DestinationOrganizationUnitId,
+                   gr.received_by_user_id AS ReceivedByUserId,
+                   gr.completes_purchase_order AS CompletesPurchaseOrder,
+                   gr.received_on_utc AS ReceivedOnUtc
+            FROM warehouse_goods_receipts gr
+            WHERE gr.purchase_order_id = @PurchaseOrderId{pendingClause}
+            ORDER BY gr.received_on_utc DESC, gr.id DESC
+            LIMIT 1{lockClause};
+            """,
             new { PurchaseOrderId = purchaseOrderId },
             transaction,
             cancellationToken: cancellationToken));
@@ -240,6 +271,7 @@ internal sealed class WarehouseRepository(
             row.DestinationOrganizationUnitId,
             row.ReceivedByUserId,
             items,
+            row.CompletesPurchaseOrder,
             DateTime.SpecifyKind(row.ReceivedOnUtc, DateTimeKind.Utc));
     }
 
@@ -257,25 +289,42 @@ internal sealed class WarehouseRepository(
             transaction,
             cancellationToken: cancellationToken));
         if (row is null) return null;
-        var items = (await connection.QueryAsync<ItemRow>(new CommandDefinition(
+        var items = (await connection.QueryAsync<ExpectedItemRow>(new CommandDefinition(
             """
-            SELECT product_id AS ProductId, quantity AS Quantity, unit_of_measure AS UnitOfMeasure
-            FROM warehouse_expected_purchase_order_items
-            WHERE purchase_order_id = @PurchaseOrderId
-            ORDER BY product_id;
+            SELECT expected.product_id AS ProductId,
+                   expected.quantity AS Quantity,
+                   expected.unit_of_measure AS UnitOfMeasure,
+                   COALESCE(SUM(CASE WHEN quality.result IS NULL OR quality.result = 'Passed'
+                                     THEN receipt_item.quantity ELSE 0 END), 0) AS ReceivedQuantity
+            FROM warehouse_expected_purchase_order_items expected
+            LEFT JOIN warehouse_goods_receipts receipt
+                   ON receipt.purchase_order_id = expected.purchase_order_id
+            LEFT JOIN warehouse_goods_receipt_items receipt_item
+                   ON receipt_item.goods_receipt_id = receipt.id
+                  AND receipt_item.product_id = expected.product_id
+            LEFT JOIN warehouse_quality_inspections quality
+                   ON quality.goods_receipt_id = receipt.id
+            WHERE expected.purchase_order_id = @PurchaseOrderId
+            GROUP BY expected.product_id, expected.quantity, expected.unit_of_measure
+            ORDER BY expected.product_id;
             """,
             new { PurchaseOrderId = purchaseOrderId },
             transaction,
             cancellationToken: cancellationToken)))
             .Select(item => new ExpectedPurchaseOrderItem(
-                item.ProductId, item.Quantity, item.UnitOfMeasure))
+                item.ProductId, item.Quantity, item.UnitOfMeasure, item.ReceivedQuantity))
             .ToArray();
+        var calculatedStatus = items.All(item => item.RemainingQuantity == 0)
+            ? ExpectedPurchaseOrderStatus.Received
+            : items.Any(item => item.ReceivedQuantity > 0)
+                ? ExpectedPurchaseOrderStatus.PartiallyReceived
+                : ExpectedPurchaseOrderStatus.Expected;
         return ExpectedPurchaseOrder.Rehydrate(
             row.PurchaseOrderId,
             row.PurchaseOrderNumber,
             row.SupplierId,
             row.DestinationOrganizationUnitId,
-            Enum.Parse<ExpectedPurchaseOrderStatus>(row.Status, true),
+            calculatedStatus,
             items,
             DateTime.SpecifyKind(row.IssuedOnUtc, DateTimeKind.Utc),
             DateTime.SpecifyKind(row.UpdatedOnUtc, DateTimeKind.Utc));
@@ -312,12 +361,18 @@ internal sealed class WarehouseRepository(
         DateTime IssuedOnUtc,
         DateTime UpdatedOnUtc);
     private sealed record ItemRow(Guid ProductId, decimal Quantity, string UnitOfMeasure);
+    private sealed record ExpectedItemRow(
+        Guid ProductId,
+        decimal Quantity,
+        string UnitOfMeasure,
+        decimal ReceivedQuantity);
     private sealed record GoodsReceiptRow(
         Guid Id,
         string GoodsReceiptNumber,
         Guid PurchaseOrderId,
         Guid DestinationOrganizationUnitId,
         Guid ReceivedByUserId,
+        bool CompletesPurchaseOrder,
         DateTime ReceivedOnUtc);
     private sealed record QualityInspectionRow(
         Guid Id,

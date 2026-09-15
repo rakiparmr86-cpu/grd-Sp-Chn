@@ -47,15 +47,6 @@
       "runOptions": { "instanceLimit": 1 }
     },
     {
-      "label": "GRD: Debug prepare Warehouse",
-      "type": "process",
-      "command": "powershell.exe",
-      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\prepare-vscode-debug.ps1", "-Project", "src/backend/Services/Warehouse/GRD.SpChn.Warehouse.Api/GRD.SpChn.Warehouse.Api.csproj", "-Port", "5276", "-ProcessName", "GRD.SpChn.Warehouse.Api"],
-      "problemMatcher": "$msCompile",
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
-      "runOptions": { "instanceLimit": 1 }
-    },
-    {
       "label": "GRD: Debug prepare Inventory",
       "type": "process",
       "command": "powershell.exe",
@@ -224,16 +215,6 @@
       "runOptions": { "instanceLimit": 1 }
     },
     {
-      "label": "GRD: Warehouse",
-      "type": "process",
-      "command": "powershell.exe",
-      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Warehouse", "-NoBuild", "-SkipInfrastructure"],
-      "isBackground": true,
-      "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
-      "runOptions": { "instanceLimit": 1 }
-    },
-    {
       "label": "GRD: OutboxPublisher",
       "type": "process",
       "command": "powershell.exe",
@@ -290,7 +271,6 @@
         "GRD: Shipment",
         "GRD: Supplier",
         "GRD: Transportation",
-        "GRD: Warehouse",
         "GRD: OutboxPublisher",
         "GRD: EventProcessor",
         "GRD: ProjectionBuilder",

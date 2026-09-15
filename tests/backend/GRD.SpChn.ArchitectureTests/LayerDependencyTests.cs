@@ -55,7 +55,7 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
-    public void Services_do_not_reference_another_services_projects()
+    public void Code_modules_do_not_reference_another_deployables_projects()
     {
         var root = FindRepositoryRoot();
         var servicesRoot = Path.Combine(root, "src", "backend", "Services");
@@ -84,13 +84,24 @@ public sealed class LayerDependencyTests
             {
                 var referencedOwner = Path.GetRelativePath(servicesRoot, referencedProject)
                     .Split(Path.DirectorySeparatorChar)[0];
+                var ownerDeployable = GetDeployable(owner);
+                var referencedDeployable = GetDeployable(referencedOwner);
                 Assert.True(
-                    string.Equals(owner, referencedOwner, StringComparison.OrdinalIgnoreCase),
-                    $"Service '{owner}' must communicate with '{referencedOwner}' through " +
+                    string.Equals(
+                        ownerDeployable,
+                        referencedDeployable,
+                        StringComparison.OrdinalIgnoreCase),
+                    $"Deployable '{ownerDeployable}' must communicate with " +
+                    $"'{referencedDeployable}' through " +
                     $"an integration contract, not project reference '{referencedProject}'.");
             }
         }
     }
+
+    private static string GetDeployable(string moduleName) =>
+        moduleName is "Inventory" or "Warehouse"
+            ? "InventoryManagement"
+            : moduleName;
 
     [Fact]
     public void Api_gateway_routes_to_services_without_project_references()

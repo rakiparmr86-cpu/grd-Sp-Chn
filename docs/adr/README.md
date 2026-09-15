@@ -29,6 +29,7 @@ Implementation alone is not approval.
 | [0002](0002-service-owned-databases.md) | Service-owned databases; no shared database access | Proposed |
 | [0003](0003-local-transactions-outbox-inbox.md) | Local transactions with Outbox/Inbox; no distributed transactions | Proposed |
 | [0004](0004-integration-event-contract-conventions.md) | Integration-event naming and versioning | Proposed |
+| [0005](0005-cohost-inventory-and-warehouse.md) | Co-host Inventory and Warehouse modules in one deployable | Proposed |
 
 ## Phase 0 Definition of Done
 

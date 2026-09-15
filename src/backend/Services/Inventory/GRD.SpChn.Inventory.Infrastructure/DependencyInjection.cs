@@ -33,13 +33,6 @@ public static class DependencyInjection
             MessagingTopology.OrderExchange,
             "inventory.order-placed",
             MessagingTopology.OrderPlacedRoutingKey);
-        services.AddRabbitMqConsumer<
-            QualityInspectionApprovedIntegrationEvent,
-            QualityInspectionApprovedIntegrationEventHandler>(
-            MessagingTopology.WarehouseExchange,
-            "inventory.quality-inspection-approved",
-            MessagingTopology.QualityInspectionApprovedRoutingKey);
-
         return services;
     }
 }

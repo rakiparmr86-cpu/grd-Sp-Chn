@@ -7,7 +7,8 @@ public sealed record QualityInspectionApprovedIntegrationEvent(
     Guid PurchaseOrderId,
     Guid DestinationOrganizationUnitId,
     Guid InspectedByUserId,
-    IReadOnlyCollection<QualityApprovedItem> Items) : IntegrationEvent;
+    IReadOnlyCollection<QualityApprovedItem> Items,
+    bool CompletesPurchaseOrder = false) : IntegrationEvent;
 
 public sealed record QualityApprovedItem(
     Guid ProductId,

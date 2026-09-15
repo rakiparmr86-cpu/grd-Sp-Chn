@@ -9,6 +9,7 @@ public sealed class GoodsReceipt
         Guid destinationOrganizationUnitId,
         Guid receivedByUserId,
         IReadOnlyCollection<ReceivedItem> items,
+        bool completesPurchaseOrder,
         DateTime receivedOnUtc)
     {
         Id = id;
@@ -17,6 +18,7 @@ public sealed class GoodsReceipt
         DestinationOrganizationUnitId = destinationOrganizationUnitId;
         ReceivedByUserId = receivedByUserId;
         Items = items;
+        CompletesPurchaseOrder = completesPurchaseOrder;
         ReceivedOnUtc = receivedOnUtc;
     }
 
@@ -26,6 +28,7 @@ public sealed class GoodsReceipt
     public Guid DestinationOrganizationUnitId { get; }
     public Guid ReceivedByUserId { get; }
     public IReadOnlyCollection<ReceivedItem> Items { get; }
+    public bool CompletesPurchaseOrder { get; }
     public DateTime ReceivedOnUtc { get; }
 
     internal static GoodsReceipt Create(
@@ -33,6 +36,7 @@ public sealed class GoodsReceipt
         Guid destinationOrganizationUnitId,
         Guid receivedByUserId,
         IReadOnlyCollection<ReceivedItem> items,
+        bool completesPurchaseOrder,
         DateTime receivedOnUtc)
     {
         var id = Guid.NewGuid();
@@ -43,6 +47,7 @@ public sealed class GoodsReceipt
             destinationOrganizationUnitId,
             receivedByUserId,
             items,
+            completesPurchaseOrder,
             receivedOnUtc);
     }
 
@@ -53,6 +58,7 @@ public sealed class GoodsReceipt
         Guid destinationOrganizationUnitId,
         Guid receivedByUserId,
         IReadOnlyCollection<ReceivedItem> items,
+        bool completesPurchaseOrder,
         DateTime receivedOnUtc) =>
         new(
             id,
@@ -61,5 +67,6 @@ public sealed class GoodsReceipt
             destinationOrganizationUnitId,
             receivedByUserId,
             items,
+            completesPurchaseOrder,
             receivedOnUtc);
 }

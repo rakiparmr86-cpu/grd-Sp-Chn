@@ -15,6 +15,8 @@
   <ItemGroup>
     <ProjectReference Include="..\GRD.SpChn.Inventory.Application\GRD.SpChn.Inventory.Application.csproj" />
     <ProjectReference Include="..\GRD.SpChn.Inventory.Infrastructure\GRD.SpChn.Inventory.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Warehouse\GRD.SpChn.Warehouse.Application\GRD.SpChn.Warehouse.Application.csproj" />
+    <ProjectReference Include="..\..\Warehouse\GRD.SpChn.Warehouse.Infrastructure\GRD.SpChn.Warehouse.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Observability\GRD.SpChn.Observability.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\GRD.SpChn.Security\GRD.SpChn.Security.csproj" />
   </ItemGroup>

@@ -14,7 +14,7 @@ Purchase Manager logs in
 Procurement transaction
   -> PO + Procurement Outbox row
 Outbox Publisher -> RabbitMQ procurement.events
-Warehouse consumer at the production location
+Inventory Management receiving consumer at the production location
   -> creates Expected Purchase Order through Inbox deduplication
 Outside supplier (no GRD login)
   -> physically dispatches material and sends challan/dispatch advice
@@ -25,22 +25,24 @@ Outside supplier/carrier
   -> delivers material to the production location
 Production Store Supervisor
   -> verifies delivered items against the expected PO
-  -> posts Goods Receipt / GRN
-Warehouse transaction
-  -> Expected PO Received + GRN + Warehouse Outbox row
+  -> manually enters the actual delivered quantity for each PO line
+  -> posts one Goods Receipt / GRN for this delivery
+Inventory Management transaction
+  -> Expected PO PartiallyReceived or Received + GRN + module Outbox row
   -> material remains in quality quarantine; usable inventory is unchanged
 Quality Inspector at the receiving location
   ├── Rejects -> Quality row + Purchase notification; no inventory movement
-  └── Passes  -> Quality row + QualityApproved Outbox row in one transaction
+  └── Passes  -> Quality row + stock movement + location balance +
+                 QualityApproved Outbox row in one transaction
 Outbox Publisher -> RabbitMQ warehouse.events
-  ├── Inventory consumer writes stock movement + increases location stock
-  └── Procurement consumer closes PO and Material Request
+  └── Procurement consumer closes PO and Material Request only after the final GRN
 ```
 
-Version 1 deliberately supports one complete receipt per PO. Partial receipt,
-over/under-delivery tolerance, partial quality acceptance, tax, payment, supplier
-validation and production consumption are future slices. Quality currently records
-one final Pass or Rejected result for the complete GRN.
+The slice supports multiple partial receipts against one PO. Only one GRN may await
+quality inspection at a time. Over-receipt is rejected; a rejected GRN does not
+increase usable stock and its quantity becomes available for a replacement receipt.
+Over-delivery tolerance, partial acceptance inside one GRN, tax, payment, supplier
+validation and production consumption remain future slices.
 
 ## Bounded-context ownership
 
@@ -51,12 +53,12 @@ one final Pass or Rejected result for the complete GRN.
 | Procurement | Material Request, approval, Purchase Order and procurement status | Physical receipt and stock balance |
 | Product Catalog | Material, category and UOM masters used by requisitions and POs | Stock balances, purchasing and receiving |
 | Supplier | Supplier master and supplier lifecycle | Purchase Orders and vendor-user authentication |
-| Warehouse | Expected PO, physical receipt/GRN, quarantine and quality result | Supplier negotiation and usable stock balance |
-| Inventory | Usable on-hand balance and immutable quality-release movements | PO/GRN and quality-test decisions |
+| Inventory Management | Receiving/GRN, quarantine, quality result, usable on-hand balance and immutable stock movements | Supplier negotiation and Purchase Order approval |
 | Outbox Publisher | Reliable publishing from service-owned Outbox tables | Business decisions |
 | API Gateway | Public HTTP routing and header forwarding | Authentication decisions and business rules |
 
-Services never read or write another service's tables. RabbitMQ contracts contain
+Modules inside Inventory Management share its transaction; separate services never
+read or write Inventory Management tables. RabbitMQ contracts contain
 only the identifiers and line details needed by their consumers.
 
 ## Organization hierarchy
@@ -155,19 +157,29 @@ For the local vertical slice, `supervisor.plant@grd.local` opens **More → Post
 receipt**. A dispatched requisition shows **Receive material** in its Action column.
 The form loads the Warehouse-owned expected PO through
 `GET /api/warehouses/purchase-orders/{purchaseOrderId}`, displays the ordered
-materials and requires an explicit physical-verification confirmation. Posting the
-form calls `POST /api/warehouses/purchase-orders/{purchaseOrderId}/goods-receipts`.
-The Warehouse service derives both receiver user ID and location from the JWT and
-rejects receipt at a different organization unit.
+quantity, already received quantity and remaining balance. The Store user manually
+enters **Receive now** for each delivered line and confirms the physical check.
+Posting the form calls
+`POST /api/warehouses/purchase-orders/{purchaseOrderId}/goods-receipts`.
+The Inventory Management service derives both receiver user ID and location from the JWT and
+rejects receipt at a different organization unit. It also rejects zero/negative
+quantities, unknown PO items, wrong UOM, duplicate lines and quantities above the
+remaining balance.
 
 Posting a GRN does not create usable stock. The same drawer moves to **Step 2 –
-Complete quality test**. A Passed result publishes
-`QualityInspectionApprovedIntegrationEvent`; Inventory then writes an immutable
-`inventory_stock_movements` row and increments `inventory_location_stock` in the
-same Inventory transaction. A Rejected result requires a reason, stays outside
+Complete quality test**. A Passed result writes an immutable
+`inventory_stock_movements` row, increments `inventory_location_stock`, and records
+`QualityInspectionApprovedIntegrationEvent` in the Outbox in the same Inventory
+Management transaction. A Rejected result requires a reason, stays outside
 usable inventory and notifies Purchase. Plant Supervisor has quality permission for
 the local demo; production can assign the separate `QualityInspector` access profile
 to enforce separation of duties.
+
+For example, if the PO is 10 LTR and the vehicle delivers 7 LTR, the first GRN stores
+7 LTR. After Quality passes it, Inventory increases by 7 LTR and the PO remains open
+with a 3 LTR balance. The next delivery can create a second GRN for at most 3 LTR.
+After that GRN passes Quality, Inventory increases by 3 LTR and Procurement closes
+the PO and originating requisition.
 
 Version 1 supports one complete dispatch per PO. Partial shipments require a future
 dispatch-header/dispatch-line model and must not be simulated by overwriting this
@@ -225,6 +237,13 @@ HR-assignable `QualityInspector` access profile. The existing
 `inventory_location_stock` table remains the authoritative usable balance; no
 duplicate inventory-balance table is introduced.
 
+Migration `011_partial_goods_receipts.sql` removes the old one-GRN-per-PO database
+constraint, records whether a GRN completes the PO, and adds the lookup index used
+for receipt history. `warehouse_goods_receipt_items` stores every manually received
+quantity. Inventory remains owned by the Inventory Management service: each passed GRN creates
+an immutable `inventory_stock_movements` row and increments the matching
+`inventory_location_stock` balance.
+
 ## Local setup
 
 From `D:\newdata\grd-Sp-Chn`, start MySQL and RabbitMQ as described in the root
@@ -241,11 +260,11 @@ Start these processes:
 API Gateway       7000
 Identity          7001
 Product Catalog   5006
-Inventory         5018
+Inventory +
+Warehouse         5018
 Organization      5218
 Procurement       5112
 Supplier          5141
-Warehouse         5276
 Outbox Publisher  background worker
 ```
 
@@ -271,12 +290,14 @@ and production-location stock.
 ## Reliability and scaling behavior
 
 - Procurement writes PO and Outbox together.
-- Warehouse uses Inbox before creating its expected PO.
-- Warehouse writes GRN and receipt status together; the goods remain quarantined.
-- Warehouse writes the quality decision and quality-approved Outbox event together.
-- Inventory uses Inbox, writes a quality-release movement and updates location stock
-  in one transaction.
-- Procurement uses Inbox and completes PO/request only after quality approval.
+- Inventory Management uses the Receiving Inbox before creating its expected PO.
+- Inventory Management writes each partial GRN and receipt status together; the goods remain
+  quarantined, and a PO-row lock prevents concurrent over-receipt.
+- Inventory Management writes the quality decision, quality-release movement,
+  location stock balance and quality-approved Outbox event in one transaction. It
+  does not consume its own event through RabbitMQ.
+- Procurement uses Inbox and completes PO/request only when the final partial GRN
+  passes quality approval.
 - Every API is stateless and can be replicated behind the Gateway/load balancer.
 - Service-owned indexes include organization/status or location/product keys.
 - Reporting should consume events into read models instead of joining service tables.

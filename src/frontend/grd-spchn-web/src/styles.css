@@ -570,6 +570,12 @@ button { cursor: pointer; }
 .goods-receipt-line strong { color: #2d3c55; font-size: .74rem; }
 .goods-receipt-line small { color: #8190a5; font-size: .62rem; }
 .goods-receipt-line > strong { flex: 0 0 auto; color: #1d5fbf; }
+.received-quantity-field { display: grid; justify-items: end; gap: 5px; flex: 0 0 150px; }
+.received-quantity-field > span { color: #75849a; font-size: .58rem; font-weight: 800; text-transform: uppercase; }
+.received-quantity-field > div { display: flex; align-items: center; gap: 8px; }
+.received-quantity-field input { width: 96px; min-height: 34px; padding: 6px 9px; border: 1px solid #cbd7e8; border-radius: 7px; color: #22314b; background: #fff; font: inherit; font-size: .73rem; text-align: right; }
+.received-quantity-field input:focus { border-color: #3978f6; outline: 2px solid rgba(57, 120, 246, .14); }
+.received-quantity-field strong { color: #1d5fbf; font-size: .7rem; }
 .receipt-confirmation { display: grid; grid-template-columns: 20px 1fr; gap: 10px; padding: 14px; border: 1px solid #cbdcf7; border-radius: 9px; color: #455675; background: #f5f9ff; font-size: .72rem; line-height: 1.5; cursor: pointer; }
 .receipt-confirmation input { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--blue); }
 .inline-retry-button { margin-left: 9px; padding: 3px 8px; border: 1px solid currentColor; border-radius: 5px; color: inherit; background: transparent; font-size: .66rem; font-weight: 800; }

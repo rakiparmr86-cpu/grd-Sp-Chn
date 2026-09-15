@@ -697,14 +697,18 @@ export function MaterialRequestWorkspace({
           catalogItems={catalogItems}
           canInspectQuality={canInspectQuality}
           onClose={() => setReceiptRequest(null)}
-          onQualityCompleted={(inspection) => {
+          onQualityCompleted={(inspection, completesPurchaseOrder) => {
             const completedRequestId = receiptRequest.id
             setReceiptRequest(null)
             if (inspection.result === 'Passed') {
-              setWorkflowMessage('Quality passed. Approved material is being added to Inventory through RabbitMQ.')
-              setRequests((current) => current.map((request) => request.id === completedRequestId
-                ? { ...request, status: 'Received', purchaseOrderStatus: 'Received' }
-                : request))
+              setWorkflowMessage(completesPurchaseOrder
+                ? 'Final receipt passed Quality. Approved material is being added to Inventory and the PO will close through RabbitMQ.'
+                : 'Partial receipt passed Quality. Its quantity is being added to Inventory; the PO remains open for the balance.')
+              if (completesPurchaseOrder) {
+                setRequests((current) => current.map((request) => request.id === completedRequestId
+                  ? { ...request, status: 'Received', purchaseOrderStatus: 'Received' }
+                  : request))
+              }
               window.setTimeout(() => void refreshRequests(), 1500)
             } else {
               setWorkflowMessage('Quality rejected the material. No usable Inventory was added; Purchase was notified.')

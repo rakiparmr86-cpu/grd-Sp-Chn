@@ -20,7 +20,7 @@ $serviceRegistry = @(
     [pscustomobject]@{ Name = "Identity";         Enabled = $true; Port = 7001; Kind = "API"; Project = "src/backend/Services/Identity/GRD.SpChn.Identity.Api/GRD.SpChn.Identity.Api.csproj" }
     [pscustomobject]@{ Name = "Notifications";    Enabled = $true; Port = 7002; Kind = "API"; Project = "src/backend/Services/Notifications/GRD.SpChn.Notifications.Api/GRD.SpChn.Notifications.Api.csproj" }
     [pscustomobject]@{ Name = "OrderManagement";  Enabled = $true; Port = 5255; Kind = "API"; Project = "src/backend/Services/OrderManagement/GRD.SpChn.OrderManagement.Api/GRD.SpChn.OrderManagement.Api.csproj" }
-    [pscustomobject]@{ Name = "Inventory";        Enabled = $true; Port = 5018; Kind = "API"; Project = "src/backend/Services/Inventory/GRD.SpChn.Inventory.Api/GRD.SpChn.Inventory.Api.csproj" }
+    [pscustomobject]@{ Name = "Inventory";        Enabled = $true; Port = 5018; Kind = "Inventory + Warehouse API"; Project = "src/backend/Services/Inventory/GRD.SpChn.Inventory.Api/GRD.SpChn.Inventory.Api.csproj" }
     [pscustomobject]@{ Name = "Delivery";         Enabled = $true; Port = 5294; Kind = "API"; Project = "src/backend/Services/Delivery/GRD.SpChn.Delivery.Api/GRD.SpChn.Delivery.Api.csproj" }
     [pscustomobject]@{ Name = "Organization";     Enabled = $true; Port = 5218; Kind = "API"; Project = "src/backend/Services/Organization/GRD.SpChn.Organization.Api/GRD.SpChn.Organization.Api.csproj" }
     [pscustomobject]@{ Name = "Procurement";      Enabled = $true; Port = 5112; Kind = "API"; Project = "src/backend/Services/Procurement/GRD.SpChn.Procurement.Api/GRD.SpChn.Procurement.Api.csproj" }
@@ -29,7 +29,6 @@ $serviceRegistry = @(
     [pscustomobject]@{ Name = "Shipment";         Enabled = $true; Port = 5059; Kind = "API"; Project = "src/backend/Services/Shipment/GRD.SpChn.Shipment.Api/GRD.SpChn.Shipment.Api.csproj" }
     [pscustomobject]@{ Name = "Supplier";         Enabled = $true; Port = 5141; Kind = "API"; Project = "src/backend/Services/Supplier/GRD.SpChn.Supplier.Api/GRD.SpChn.Supplier.Api.csproj" }
     [pscustomobject]@{ Name = "Transportation";   Enabled = $true; Port = 5258; Kind = "API"; Project = "src/backend/Services/Transportation/GRD.SpChn.Transportation.Api/GRD.SpChn.Transportation.Api.csproj" }
-    [pscustomobject]@{ Name = "Warehouse";        Enabled = $true; Port = 5276; Kind = "API"; Project = "src/backend/Services/Warehouse/GRD.SpChn.Warehouse.Api/GRD.SpChn.Warehouse.Api.csproj" }
     [pscustomobject]@{ Name = "OutboxPublisher";  Enabled = $true; Port = $null; Kind = "Worker"; Project = "src/backend/Workers/GRD.SpChn.OutboxPublisher/GRD.SpChn.OutboxPublisher.csproj" }
     [pscustomobject]@{ Name = "EventProcessor";   Enabled = $true; Port = $null; Kind = "Worker"; Project = "src/backend/Workers/GRD.SpChn.EventProcessor/GRD.SpChn.EventProcessor.csproj" }
     [pscustomobject]@{ Name = "ProjectionBuilder"; Enabled = $true; Port = $null; Kind = "Worker"; Project = "src/backend/Workers/GRD.SpChn.ProjectionBuilder/GRD.SpChn.ProjectionBuilder.csproj" }

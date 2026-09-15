@@ -4,6 +4,7 @@ import {
   ApiError,
   type CatalogItem,
   type ExpectedPurchaseOrder,
+  type GoodsReceiptItem,
   type GoodsReceipt,
   type QualityInspection,
 } from '../api'
@@ -15,7 +16,7 @@ interface GoodsReceiptPanelProps {
   catalogItems: CatalogItem[]
   canInspectQuality: boolean
   onClose: () => void
-  onQualityCompleted: (inspection: QualityInspection) => void
+  onQualityCompleted: (inspection: QualityInspection, completesPurchaseOrder: boolean) => void
 }
 
 export function GoodsReceiptPanel({
@@ -30,6 +31,7 @@ export function GoodsReceiptPanel({
   const [expectedOrder, setExpectedOrder] = useState<ExpectedPurchaseOrder | null>(null)
   const [goodsReceipt, setGoodsReceipt] = useState<GoodsReceipt | null>(null)
   const [inspection, setInspection] = useState<QualityInspection | null>(null)
+  const [receivedQuantities, setReceivedQuantities] = useState<Record<string, string>>({})
   const [confirmed, setConfirmed] = useState(false)
   const [qualityResult, setQualityResult] = useState<'Passed' | 'Rejected'>('Passed')
   const [qualityNotes, setQualityNotes] = useState('')
@@ -45,7 +47,11 @@ export function GoodsReceiptPanel({
     try {
       const order = await api.getExpectedPurchaseOrder(accessToken, purchaseOrderId)
       setExpectedOrder(order)
-      if (order.status === 'Received' && canInspectQuality) {
+      setReceivedQuantities(Object.fromEntries(order.items.map((item) => [
+        item.productId,
+        String(item.remainingQuantity ?? Math.max(item.quantity - (item.receivedQuantity ?? 0), 0)),
+      ])))
+      if (order.status !== 'Expected' && canInspectQuality) {
         const context = await api.getQualityInspection(accessToken, purchaseOrderId)
         setGoodsReceipt(context.goodsReceipt)
         setInspection(context.inspection)
@@ -67,18 +73,48 @@ export function GoodsReceiptPanel({
     event.preventDefault()
     if (!expectedOrder || !confirmed) return
 
+    const items: GoodsReceiptItem[] = expectedOrder.items
+      .map((item) => ({
+        productId: item.productId,
+        quantity: Number(receivedQuantities[item.productId] ?? 0),
+        unitOfMeasure: item.unitOfMeasure,
+      }))
+      .filter((item) => item.quantity > 0)
+    if (items.length === 0) {
+      setError('Enter a received quantity greater than zero for at least one material.')
+      return
+    }
+    const invalidItem = items.find((received) => {
+      const expected = expectedOrder.items.find((item) => item.productId === received.productId)
+      const remaining = expected?.remainingQuantity ?? expected?.quantity ?? 0
+      return !Number.isFinite(received.quantity) || received.quantity > remaining
+    })
+    if (invalidItem) {
+      setError('Received quantity cannot be greater than the remaining purchase-order quantity.')
+      return
+    }
+
     setSubmitting(true)
     setError('')
     try {
       const receipt = await api.postGoodsReceipt(
         accessToken,
         purchaseOrderId,
-        expectedOrder.items,
+        items,
       )
       setGoodsReceipt(receipt)
-      setExpectedOrder({ ...expectedOrder, status: 'Received' })
+      setInspection(null)
+      const refreshedOrder = await api.getExpectedPurchaseOrder(accessToken, purchaseOrderId)
+      setExpectedOrder(refreshedOrder)
+      setReceivedQuantities(Object.fromEntries(refreshedOrder.items.map((item) => [
+        item.productId,
+        String(item.remainingQuantity ?? Math.max(item.quantity - (item.receivedQuantity ?? 0), 0)),
+      ])))
       setConfirmed(false)
-      setNotice(`${receipt.goodsReceiptNumber} was posted. Material is quarantined until Quality passes it.`)
+      setNotice(
+        `${receipt.goodsReceiptNumber} was posted for the actual delivered quantity. ` +
+        `Material is quarantined until Quality passes it.${receipt.completesPurchaseOrder ? '' : ' The PO remains open for the balance.'}`,
+      )
     } catch (reason) {
       setError(reason instanceof ApiError
         ? reason.message
@@ -106,7 +142,10 @@ export function GoodsReceiptPanel({
         qualityNotes.trim() || null,
       )
       setInspection(completed)
-      onQualityCompleted(completed)
+      onQualityCompleted(completed, goodsReceipt.completesPurchaseOrder)
+      if (expectedOrder?.status !== 'Received') {
+        setNotice(`Quality is ${completed.result}. You can post the next delivery for the remaining PO quantity.`)
+      }
     } catch (reason) {
       setError(reason instanceof ApiError
         ? reason.message
@@ -116,7 +155,14 @@ export function GoodsReceiptPanel({
     }
   }
 
-  const itemLines = expectedOrder?.items ?? goodsReceipt?.items ?? []
+  const showReceiptForm = Boolean(
+    expectedOrder &&
+    expectedOrder.status !== 'Received' &&
+    (!goodsReceipt || inspection !== null),
+  )
+  const itemLines = showReceiptForm
+    ? expectedOrder?.items ?? []
+    : goodsReceipt?.items ?? expectedOrder?.items ?? []
 
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={onClose}>
@@ -159,22 +205,53 @@ export function GoodsReceiptPanel({
             </div>
           ) : expectedOrder ? (
             <>
-              <div className="goods-receipt-lines" aria-label="Materials received">
+              <div className="goods-receipt-lines" aria-label={showReceiptForm ? 'Purchase order quantities' : 'Materials received'}>
                 {itemLines.map((item) => {
                   const material = catalogItems.find((entry) => entry.id === item.productId)
+                  const expectedItem = expectedOrder.items.find((entry) => entry.productId === item.productId)
+                  const receivedToDate = expectedItem?.receivedQuantity ?? 0
+                  const remaining = expectedItem?.remainingQuantity ?? Math.max((expectedItem?.quantity ?? item.quantity) - receivedToDate, 0)
                   return (
                     <div className="goods-receipt-line" key={item.productId}>
                       <div>
                         <strong>{material?.name ?? item.productId}</strong>
-                        <small>{material?.code ?? 'Catalog item'}</small>
+                        <small>
+                          {material?.code ?? 'Catalog item'}
+                          {showReceiptForm && ` · Ordered ${expectedItem?.quantity.toLocaleString('en-IN')} ${item.unitOfMeasure} · Received ${receivedToDate.toLocaleString('en-IN')} · Balance ${remaining.toLocaleString('en-IN')}`}
+                        </small>
                       </div>
-                      <strong>{item.quantity.toLocaleString('en-IN')} {item.unitOfMeasure}</strong>
+                      {showReceiptForm ? (
+                        <label className="received-quantity-field">
+                          <span>Receive now</span>
+                          <div>
+                            <input
+                              type="number"
+                              min="0"
+                              max={remaining}
+                              step="0.001"
+                              inputMode="decimal"
+                              value={receivedQuantities[item.productId] ?? ''}
+                              onChange={(event) => {
+                                setReceivedQuantities((current) => ({
+                                  ...current,
+                                  [item.productId]: event.target.value,
+                                }))
+                                setConfirmed(false)
+                              }}
+                              aria-label={`Quantity received for ${material?.name ?? item.productId}`}
+                            />
+                            <strong>{item.unitOfMeasure}</strong>
+                          </div>
+                        </label>
+                      ) : (
+                        <strong>{item.quantity.toLocaleString('en-IN')} {item.unitOfMeasure}</strong>
+                      )}
                     </div>
                   )
                 })}
               </div>
 
-              {expectedOrder.status !== 'Received' ? (
+              {showReceiptForm ? (
                 <form className="receipt-stage" onSubmit={handleReceipt}>
                   <div className="workflow-stage-heading">
                     <span>Step 1</span>
@@ -186,7 +263,7 @@ export function GoodsReceiptPanel({
                       checked={confirmed}
                       onChange={(event) => setConfirmed(event.target.checked)}
                     />
-                    <span>I physically checked the delivery and confirm every quantity and UOM above.</span>
+                    <span>I physically checked the delivery and confirm the manually entered quantities and UOM above.</span>
                   </label>
                   <div className="drawer-actions">
                     <button className="secondary-button" type="button" onClick={onClose}>Cancel</button>

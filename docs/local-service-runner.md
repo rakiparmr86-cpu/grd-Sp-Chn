@@ -113,8 +113,8 @@ The safety/build logic is in `scripts/prepare-vscode-debug.ps1`; the VS Code wir
 in `.vscode/tasks.json` and `.vscode/launch.json`. The local debug connection strings
 currently use MySQL on `localhost:3308`, matching `deploy/docker/.env`.
 
-For the procure-to-receive workflow, keep Gateway, Identity, Procurement, Warehouse,
-Inventory, and OutboxPublisher running. Attach to the process you are investigating,
+For the procure-to-receive workflow, keep Gateway, Identity, Procurement, the merged
+Inventory/Warehouse API, and OutboxPublisher running. Attach to the process you are investigating,
 or stop just that one process and launch its named debug profile.
 
 ### Debug React
@@ -148,7 +148,8 @@ VS Code then performs this sequence:
    refusing to terminate a process from another repository;
 2. starts the Docker MySQL and RabbitMQ infrastructure;
 3. builds all enabled projects sequentially to avoid Windows executable locks;
-4. launches all 14 backend APIs and 3 workers with a debugger attached to each;
+4. launches all 13 backend HTTP processes (Gateway plus 12 service APIs) and 3
+   workers with a debugger attached to each;
 5. stops every process launched by the compound when the debug session is stopped.
 
 The compound is intended for cross-service investigation and uses significantly more
@@ -219,7 +220,7 @@ pwsh -NoProfile -File scripts\start-local-services.ps1
 | Identity | `http://localhost:7001` |
 | Notifications | `http://localhost:7002` |
 | Order Management | `http://localhost:5255` |
-| Inventory | `http://localhost:5018` |
+| Inventory + Warehouse | `http://localhost:5018` |
 | Product Catalog | `http://localhost:5006` |
 | Shipment | `http://localhost:5059` |
 | Procurement | `http://localhost:5112` |
@@ -227,7 +228,6 @@ pwsh -NoProfile -File scripts\start-local-services.ps1
 | Organization | `http://localhost:5218` |
 | Transportation | `http://localhost:5258` |
 | Reporting | `http://localhost:5274` |
-| Warehouse | `http://localhost:5276` |
 | Delivery | `http://localhost:5294` |
 | React Web | `http://localhost:5173` |
 

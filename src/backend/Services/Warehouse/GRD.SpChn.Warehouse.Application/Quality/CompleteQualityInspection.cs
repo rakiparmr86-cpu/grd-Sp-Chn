@@ -16,6 +16,7 @@ public sealed record CompleteQualityInspectionCommand(
 
 internal sealed class CompleteQualityInspectionCommandHandler(
     IWarehouseRepository repository,
+    IInventoryReleaseWriter inventoryReleaseWriter,
     IWarehouseOutboxWriter outboxWriter)
     : IRequestHandler<CompleteQualityInspectionCommand, Result<QualityInspectionResponse>>
 {
@@ -23,19 +24,36 @@ internal sealed class CompleteQualityInspectionCommandHandler(
         CompleteQualityInspectionCommand request,
         CancellationToken cancellationToken)
     {
-        var receipt = await repository.GetGoodsReceiptByPurchaseOrderAsync(
+        var receipt = await repository.GetGoodsReceiptAwaitingInspectionByPurchaseOrderAsync(
             request.PurchaseOrderId,
             forUpdate: true,
             cancellationToken);
         if (receipt is null)
         {
+            var latestReceipt = await repository.GetGoodsReceiptByPurchaseOrderAsync(
+                request.PurchaseOrderId,
+                forUpdate: true,
+                cancellationToken);
+            if (latestReceipt is not null)
+            {
+                var latestInspection = await repository.GetQualityInspectionByGoodsReceiptAsync(
+                    latestReceipt.Id,
+                    forUpdate: true,
+                    cancellationToken);
+                return Result<QualityInspectionResponse>.Failure(Error.Conflict(
+                    "Warehouse.QualityInspectionAlreadyCompleted",
+                    latestInspection is null
+                        ? "No goods receipt is awaiting quality inspection."
+                        : $"Quality inspection for {latestReceipt.GoodsReceiptNumber} is already {latestInspection.Result}."));
+            }
+
             return Result<QualityInspectionResponse>.Failure(Error.NotFound(
                 "Warehouse.GoodsReceiptNotFound",
                 $"Post the goods receipt for purchase order '{request.PurchaseOrderId}' before quality inspection."));
         }
 
-        var existing = await repository.GetQualityInspectionByPurchaseOrderAsync(
-            request.PurchaseOrderId,
+        var existing = await repository.GetQualityInspectionByGoodsReceiptAsync(
+            receipt.Id,
             forUpdate: true,
             cancellationToken);
         if (existing is not null)
@@ -57,21 +75,34 @@ internal sealed class CompleteQualityInspectionCommandHandler(
 
             if (inspection.Result == QualityInspectionResult.Passed)
             {
+                var approvedEvent = new QualityInspectionApprovedIntegrationEvent(
+                    inspection.Id,
+                    receipt.Id,
+                    receipt.GoodsReceiptNumber,
+                    receipt.PurchaseOrderId,
+                    receipt.DestinationOrganizationUnitId,
+                    inspection.InspectedByUserId,
+                    receipt.Items.Select(item => new QualityApprovedItem(
+                        item.ProductId,
+                        item.Quantity,
+                        item.UnitOfMeasure)).ToArray(),
+                    receipt.CompletesPurchaseOrder)
+                {
+                    OccurredOnUtc = inspection.InspectedOnUtc
+                };
+
+                await inventoryReleaseWriter.ReleaseAsync(
+                    approvedEvent.EventId,
+                    inspection.Id,
+                    receipt.DestinationOrganizationUnitId,
+                    receipt.Items.Select(item => new InventoryReleaseItem(
+                        item.ProductId,
+                        item.Quantity)).ToArray(),
+                    inspection.InspectedOnUtc,
+                    cancellationToken);
+
                 await outboxWriter.AddAsync(
-                    new QualityInspectionApprovedIntegrationEvent(
-                        inspection.Id,
-                        receipt.Id,
-                        receipt.GoodsReceiptNumber,
-                        receipt.PurchaseOrderId,
-                        receipt.DestinationOrganizationUnitId,
-                        inspection.InspectedByUserId,
-                        receipt.Items.Select(item => new QualityApprovedItem(
-                            item.ProductId,
-                            item.Quantity,
-                            item.UnitOfMeasure)).ToArray())
-                    {
-                        OccurredOnUtc = inspection.InspectedOnUtc
-                    },
+                    approvedEvent,
                     MessagingTopology.WarehouseExchange,
                     MessagingTopology.QualityInspectionApprovedRoutingKey,
                     cancellationToken);

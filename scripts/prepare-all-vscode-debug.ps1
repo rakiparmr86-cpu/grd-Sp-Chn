@@ -19,7 +19,6 @@ $servicePorts = [ordered]@{
     Shipment = 5059
     Supplier = 5141
     Transportation = 5258
-    Warehouse = 5276
 }
 $workerProcessNames = @(
     "GRD.SpChn.OutboxPublisher",

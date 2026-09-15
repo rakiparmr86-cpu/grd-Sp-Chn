@@ -116,28 +116,72 @@ $dispatch = Invoke-Authorized `
     }
 Write-Host "Vendor dispatch recorded: $($dispatch.status)" -ForegroundColor Green
 
-$receipt = Invoke-Authorized `
+$initialStock = try {
+    (Invoke-Authorized "Get" "/api/inventory/stock/locations/$plantId/$productId" $supervisor.accessToken $null).onHandQuantity
+}
+catch { 0 }
+
+$firstReceipt = Invoke-Authorized `
     "Post" `
     "/api/warehouses/purchase-orders/$($purchaseOrder.id)/goods-receipts" `
     $supervisor.accessToken `
     @{
-        items = @(@{ productId = $productId; quantity = 50; unitOfMeasure = "KG" })
+        items = @(@{ productId = $productId; quantity = 30; unitOfMeasure = "KG" })
     }
-Write-Host "Goods receipt posted: $($receipt.goodsReceiptNumber)" -ForegroundColor Green
+Write-Host "Partial goods receipt posted: $($firstReceipt.goodsReceiptNumber) (30 KG)" -ForegroundColor Green
 
-$qualityInspection = Invoke-Authorized `
+$firstQualityInspection = Invoke-Authorized `
     "Post" `
     "/api/warehouses/purchase-orders/$($purchaseOrder.id)/quality-inspection" `
     $supervisor.accessToken `
     @{
         result = "Passed"
-        notes = "Smoke-test quality checks passed"
+        notes = "First partial-delivery quality checks passed"
     }
-Write-Host "Quality inspection: $($qualityInspection.result)" -ForegroundColor Green
+Write-Host "First quality inspection: $($firstQualityInspection.result)" -ForegroundColor Green
+
+$partialStock = Wait-ForResult `
+    {
+        $current = Invoke-Authorized "Get" "/api/inventory/stock/locations/$plantId/$productId" $supervisor.accessToken $null
+        if ($current.onHandQuantity -ge ($initialStock + 30)) { $current } else { $null }
+    } `
+    "the first partial quantity in location inventory"
+$partialExpectedOrder = Invoke-Authorized `
+    "Get" `
+    "/api/warehouses/purchase-orders/$($purchaseOrder.id)" `
+    $supervisor.accessToken `
+    $null
+if ($partialExpectedOrder.status -ne "PartiallyReceived" -or
+    $partialExpectedOrder.items[0].remainingQuantity -ne 20) {
+    throw "Expected a PartiallyReceived PO with 20 KG remaining."
+}
+Write-Host "Partial inventory released: $($partialStock.onHandQuantity) KG; PO balance: 20 KG" -ForegroundColor Green
+
+$finalReceipt = Invoke-Authorized `
+    "Post" `
+    "/api/warehouses/purchase-orders/$($purchaseOrder.id)/goods-receipts" `
+    $supervisor.accessToken `
+    @{
+        items = @(@{ productId = $productId; quantity = 20; unitOfMeasure = "KG" })
+    }
+Write-Host "Final goods receipt posted: $($finalReceipt.goodsReceiptNumber) (20 KG)" -ForegroundColor Green
+
+$finalQualityInspection = Invoke-Authorized `
+    "Post" `
+    "/api/warehouses/purchase-orders/$($purchaseOrder.id)/quality-inspection" `
+    $supervisor.accessToken `
+    @{
+        result = "Passed"
+        notes = "Final partial-delivery quality checks passed"
+    }
+Write-Host "Final quality inspection: $($finalQualityInspection.result)" -ForegroundColor Green
 
 $stock = Wait-ForResult `
-    { Invoke-Authorized "Get" "/api/inventory/stock/locations/$plantId/$productId" $supervisor.accessToken $null } `
-    "location inventory"
+    {
+        $current = Invoke-Authorized "Get" "/api/inventory/stock/locations/$plantId/$productId" $supervisor.accessToken $null
+        if ($current.onHandQuantity -ge ($initialStock + 50)) { $current } else { $null }
+    } `
+    "the final partial quantity in location inventory"
 $finalOrder = Wait-ForResult `
     {
         $order = Invoke-Authorized "Get" "/api/procurement/purchase-orders/$($purchaseOrder.id)" $manager.accessToken $null

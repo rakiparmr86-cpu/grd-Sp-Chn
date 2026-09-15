@@ -12,6 +12,7 @@ public sealed class ProcurementProcessManager(
     public Task ProcessQualityApprovalAsync(
         Guid eventId,
         Guid purchaseOrderId,
+        bool completesPurchaseOrder,
         CancellationToken cancellationToken = default) =>
         unitOfWork.ExecuteAsync(
             async transactionCancellationToken =>
@@ -21,6 +22,10 @@ public sealed class ProcurementProcessManager(
                     nameof(QualityInspectionApprovedIntegrationEvent),
                     transactionCancellationToken);
                 if (!isNew) return false;
+
+                // Every approved GRN updates Inventory. Procurement closes the PO only
+                // when the GRN contains the final outstanding PO quantity.
+                if (!completesPurchaseOrder) return true;
 
                 var purchaseOrder = await repository.GetPurchaseOrderForUpdateAsync(
                     purchaseOrderId,

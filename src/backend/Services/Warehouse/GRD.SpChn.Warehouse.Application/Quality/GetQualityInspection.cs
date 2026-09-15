@@ -17,7 +17,10 @@ internal sealed class GetQualityInspectionQueryHandler(IWarehouseRepository repo
         GetQualityInspectionQuery request,
         CancellationToken cancellationToken)
     {
-        var receipt = await repository.GetGoodsReceiptByPurchaseOrderAsync(
+        var receipt = await repository.GetGoodsReceiptAwaitingInspectionByPurchaseOrderAsync(
+            request.PurchaseOrderId,
+            cancellationToken: cancellationToken);
+        receipt ??= await repository.GetGoodsReceiptByPurchaseOrderAsync(
             request.PurchaseOrderId,
             cancellationToken: cancellationToken);
         if (receipt is null)
@@ -33,8 +36,8 @@ internal sealed class GetQualityInspectionQueryHandler(IWarehouseRepository repo
                 "Quality inspection can only be viewed at the receiving location."));
         }
 
-        var inspection = await repository.GetQualityInspectionByPurchaseOrderAsync(
-            request.PurchaseOrderId,
+        var inspection = await repository.GetQualityInspectionByGoodsReceiptAsync(
+            receipt.Id,
             cancellationToken: cancellationToken);
         return Result<QualityInspectionContextResponse>.Success(new(
             GoodsReceiptResponse.From(receipt),

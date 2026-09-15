@@ -53,6 +53,7 @@ $migrationFiles = @(
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/008_product_catalog_master.sql")
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/009_purchase_order_vendor_dispatch.sql")
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/010_quality_release_to_inventory.sql")
+    (Join-Path $repositoryRoot "deploy/docker/mysql/init/011_partial_goods_receipts.sql")
 )
 $composeArguments = @("compose")
 if (Test-Path -LiteralPath $dockerEnvironmentFile -PathType Leaf) {

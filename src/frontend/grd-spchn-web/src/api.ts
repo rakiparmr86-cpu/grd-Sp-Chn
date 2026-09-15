@@ -161,6 +161,8 @@ export interface ExpectedPurchaseOrderItem {
   productId: string
   quantity: number
   unitOfMeasure: string
+  receivedQuantity: number
+  remainingQuantity: number
 }
 
 export interface ExpectedPurchaseOrder {
@@ -178,8 +180,15 @@ export interface GoodsReceipt {
   purchaseOrderId: string
   destinationOrganizationUnitId: string
   receivedByUserId: string
+  completesPurchaseOrder: boolean
   receivedOnUtc: string
-  items: ExpectedPurchaseOrderItem[]
+  items: GoodsReceiptItem[]
+}
+
+export interface GoodsReceiptItem {
+  productId: string
+  quantity: number
+  unitOfMeasure: string
 }
 
 export interface QualityInspection {
@@ -385,7 +394,7 @@ export const api = {
   postGoodsReceipt: (
     accessToken: string,
     purchaseOrderId: string,
-    items: ExpectedPurchaseOrderItem[],
+    items: GoodsReceiptItem[],
   ) =>
     request<GoodsReceipt>(
       `/api/warehouses/purchase-orders/${encodeURIComponent(purchaseOrderId)}/goods-receipts`,
