@@ -7,6 +7,24 @@ public sealed record InvoiceMatchItem(
     string UnitOfMeasure,
     decimal PurchaseOrderUnitPrice);
 
+public sealed record InvoiceCandidateItem(
+    Guid ProductId,
+    decimal AcceptedQuantity,
+    decimal AlreadyInvoicedQuantity,
+    decimal RemainingQuantity,
+    string UnitOfMeasure,
+    decimal PurchaseOrderUnitPrice);
+
+public sealed record InvoiceCandidateResponse(
+    Guid PurchaseOrderId,
+    string PurchaseOrderNumber,
+    Guid GoodsReceiptId,
+    string GoodsReceiptNumber,
+    Guid SupplierId,
+    string Currency,
+    DateTime AcceptedOnUtc,
+    IReadOnlyCollection<InvoiceCandidateItem> Items);
+
 public sealed record InvoiceMatchContext(
     Guid PurchaseOrderId,
     string PurchaseOrderNumber,

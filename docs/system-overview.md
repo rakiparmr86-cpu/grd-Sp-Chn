@@ -19,26 +19,26 @@ design rules, see [`event-driven-development.md`](event-driven-development.md).
 
 | Category | Count | Explanation |
 | --- | ---: | --- |
-| Business modules | 13 | Warehouse remains a code module but is co-hosted with Inventory in one deployable. |
-| Active service API processes | 12 | Inventory and Warehouse share the Inventory API process on port 5018. |
+| Business modules | 14 | Warehouse remains a code module but is co-hosted with Inventory; Accounting is a separate boundary. |
+| Active service API processes | 13 | Inventory and Warehouse share port 5018; Accounting runs independently on port 5310. |
 | Projects per service | 4 | Each service has `.Api`, `.Application`, `.Domain`, and `.Infrastructure`. |
-| Service projects | 52 | 13 services multiplied by four layers. |
+| Service projects | 56 | 14 services multiplied by four layers. |
 | API Gateway projects/processes | 1 | YARP public entry point. |
 | Frontend projects/processes | 1 | React/Vite login and permission-aware ERP dashboard. |
 | Worker projects/processes | 3 | Outbox Publisher, Event Processor, and Projection Builder. |
 | Shared building-block projects | 7 | Contracts, EventBus abstractions, RabbitMQ adapter, MySQL persistence, observability, JWT security, and Shared Kernel. |
 | Test projects | 4 | Unit, architecture, contract, and integration tests. |
-| Total `.csproj` files | 67 | Includes services, Gateway, workers, building blocks, and tests. |
+| Total `.csproj` files | 71 | Includes services, Gateway, workers, building blocks, and tests. |
 
 When every executable is enabled locally, the runtime consists of:
 
 ```text
-13 backend HTTP processes = 1 API Gateway + 12 service APIs
+14 backend HTTP processes = 1 API Gateway + 13 service APIs
  1 frontend HTTP process = React/Vite web UI
  3 worker processes
  2 infrastructure containers = MySQL + RabbitMQ
 ---------------------------------------------------
-19 runtime processes/containers in the full local landscape
+20 runtime processes/containers in the full local landscape
 ```
 
 Building blocks, Domain, Application, Infrastructure, and test projects compile to
@@ -58,7 +58,7 @@ assemblies; they are not separate running processes.
 
 | Process | Port | Status | Responsibility |
 | --- | ---: | --- | --- |
-| `grd-spchn-web` | 5173 | **Partial** | React login, permission-aware ERP command center, HR user creation, and Director access-profile permission management. Calls backend services only through YARP. Procurement forms and operational read models remain. |
+| `grd-spchn-web` | 5173 | **Partial** | React login, permission-aware ERP command center, HR/access management, procure-to-receive screens, and receive-to-pay Accounting workspace. Calls backend services only through YARP. |
 
 ### API Gateway
 
@@ -72,6 +72,7 @@ The Gateway also exposes its own `/`, `/health/live`, and `/health/ready` endpoi
 
 | Service process | Port | Gateway path | Status | Current responsibility |
 | --- | ---: | --- | --- | --- |
+| `GRD.SpChn.Accounting.Api` | 5310 | `/api/accounting/*` | **Implemented** | Projects PO and accepted-GRN events, posts GRNI accrual, three-way matches invoices, controls payable approval/payment, and owns journals with Inbox/Outbox. |
 | `GRD.SpChn.OrderManagement.Api` | 5255 | `/orders/{**catch-all}` | **Implemented** | Accepts orders, returns `Pending`, exposes order-status queries, consumes Inventory reservation results, and confirms/cancels Orders. |
 | `GRD.SpChn.Inventory.Api` | 5018 | `/api/inventory/*` and `/api/warehouses/*` | **Implemented** | Single Inventory Management deployable: sales-order reservation, expected PO, GRN/partial receipt, quarantine, quality inspection, stock movement and location balance. |
 | `GRD.SpChn.Identity.Api` | 7001 | `/api/identity/{**catch-all}` | **Partial** | Authenticates PBKDF2-backed users; resolves role and permissions from database-owned access-profile tables; issues organization/role/permission JWTs; lets authorized HR Managers create operational users; and lets Directors atomically manage profile permissions from a validated catalog. Refresh, revocation, audit and production key management remain. |
@@ -92,7 +93,7 @@ Every service API also maps common `/health/live` and `/health/ready` endpoints 
 
 | Worker process | HTTP port | Status | Current responsibility |
 | --- | ---: | --- | --- |
-| `GRD.SpChn.OutboxPublisher` | None | **Implemented** | Polls Order, Inventory, Procurement and Warehouse Outboxes, publishes due messages to RabbitMQ, marks confirmed messages processed, and records retry state after failure. |
+| `GRD.SpChn.OutboxPublisher` | None | **Implemented** | Polls Order, Inventory, Procurement, Warehouse, and Accounting Outboxes, publishes due messages to RabbitMQ, marks confirmed messages processed, and records retry state after failure. |
 | `GRD.SpChn.EventProcessor` | None | **Scaffold** | Registers MySQL/RabbitMQ building blocks but currently only writes a timed heartbeat log. It does not process business events yet. |
 | `GRD.SpChn.ProjectionBuilder` | None | **Scaffold** | Registers MySQL/RabbitMQ building blocks but currently only writes a timed heartbeat log. It does not build a read projection yet. |
 

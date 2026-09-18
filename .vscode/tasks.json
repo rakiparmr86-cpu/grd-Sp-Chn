@@ -11,6 +11,15 @@
       "runOptions": { "instanceLimit": 1 }
     },
     {
+      "label": "GRD: Debug prepare Accounting",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\prepare-vscode-debug.ps1", "-Project", "src/backend/Services/Accounting/GRD.SpChn.Accounting.Api/GRD.SpChn.Accounting.Api.csproj", "-Port", "5310", "-ProcessName", "GRD.SpChn.Accounting.Api"],
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
       "label": "GRD: Debug prepare ApiGateway",
       "type": "process",
       "command": "powershell.exe",
@@ -83,6 +92,16 @@
       "runOptions": {
         "instanceLimit": 1
       }
+    },
+    {
+      "label": "GRD: Accounting",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}\\scripts\\start-local-services.ps1", "-Service", "Accounting", "-NoBuild", "-SkipInfrastructure"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "runOptions": { "instanceLimit": 1 }
     },
     {
       "label": "GRD: ApiGateway",
@@ -258,6 +277,7 @@
       "label": "GRD: Launch enabled services",
       "dependsOrder": "parallel",
       "dependsOn": [
+        "GRD: Accounting",
         "GRD: ApiGateway",
         "GRD: Identity",
         "GRD: Notifications",

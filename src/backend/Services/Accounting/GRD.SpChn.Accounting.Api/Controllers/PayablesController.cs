@@ -11,6 +11,11 @@ namespace GRD.SpChn.Accounting.Api.Controllers;
 [Route("payables")]
 public sealed class PayablesController(ISender sender) : ControllerBase
 {
+    [Authorize(Policy = ErpPolicies.AccountingInvoiceCreate)]
+    [HttpGet("invoice-candidates")]
+    public async Task<IActionResult> ListInvoiceCandidates(CancellationToken cancellationToken) =>
+        Ok(await sender.Send(new ListInvoiceCandidatesQuery(), cancellationToken));
+
     [Authorize(Policy = ErpPolicies.AccountingPayableRead)]
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken cancellationToken) =>

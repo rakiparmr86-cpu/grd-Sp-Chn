@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $servicePorts = [ordered]@{
+    Accounting = 5310
     ApiGateway = 7000
     Identity = 7001
     Notifications = 7002

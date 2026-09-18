@@ -35,6 +35,9 @@ internal sealed class CreateVendorInvoiceCommandHandler(
                 "Accounting.MatchContextNotFound",
                 "The quality-approved receipt and purchase order are not available in Accounting yet."));
 
+        if (string.IsNullOrWhiteSpace(request.SupplierInvoiceNumber))
+            return Validation("Accounting.SupplierInvoiceNumberRequired", "The supplier invoice number is required.");
+
         if (await repository.SupplierInvoiceExistsAsync(
                 context.SupplierId,
                 request.SupplierInvoiceNumber.Trim(),

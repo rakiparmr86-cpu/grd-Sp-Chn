@@ -15,6 +15,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseDarkSwaggerUi(
         [
+            new SwaggerDocumentEndpoint("Accounting v1", "/api/accounting/openapi/v1.json"),
             new SwaggerDocumentEndpoint("Delivery v1", "/api/delivery/openapi/v1.json"),
             new SwaggerDocumentEndpoint("Identity v1", "/api/identity/openapi/v1.json"),
             new SwaggerDocumentEndpoint(
@@ -35,6 +36,7 @@ if (app.Environment.IsDevelopment())
                 "/api/transportation/openapi/v1.json")
         ],
         [
+            new SwaggerRequestRoute("http://localhost:5310", "/api/accounting"),
             new SwaggerRequestRoute("http://localhost:5294", "/api/delivery"),
             new SwaggerRequestRoute("http://localhost:7001", "/api/identity"),
             new SwaggerRequestRoute("http://localhost:5018", "/api/inventory"),

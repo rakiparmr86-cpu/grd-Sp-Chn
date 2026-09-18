@@ -148,7 +148,7 @@ VS Code then performs this sequence:
    refusing to terminate a process from another repository;
 2. starts the Docker MySQL and RabbitMQ infrastructure;
 3. builds all enabled projects sequentially to avoid Windows executable locks;
-4. launches all 13 backend HTTP processes (Gateway plus 12 service APIs) and 3
+4. launches all 14 backend HTTP processes (Gateway plus 13 service APIs) and 3
    workers with a debugger attached to each;
 5. stops every process launched by the compound when the debug session is stopped.
 
@@ -216,6 +216,7 @@ pwsh -NoProfile -File scripts\start-local-services.ps1
 
 | Process | Address |
 | --- | --- |
+| Accounting | `http://localhost:5310` |
 | API Gateway | `http://localhost:7000` |
 | Identity | `http://localhost:7001` |
 | Notifications | `http://localhost:7002` |

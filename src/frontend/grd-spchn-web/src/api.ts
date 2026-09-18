@@ -225,6 +225,72 @@ export interface Supplier {
   status: string
 }
 
+export interface AccountingInvoiceCandidateItem {
+  productId: string
+  acceptedQuantity: number
+  alreadyInvoicedQuantity: number
+  remainingQuantity: number
+  unitOfMeasure: string
+  purchaseOrderUnitPrice: number
+}
+
+export interface AccountingInvoiceCandidate {
+  purchaseOrderId: string
+  purchaseOrderNumber: string
+  goodsReceiptId: string
+  goodsReceiptNumber: string
+  supplierId: string
+  currency: string
+  acceptedOnUtc: string
+  items: AccountingInvoiceCandidateItem[]
+}
+
+export interface AccountingPayable {
+  id: string
+  invoiceNumber: string
+  supplierInvoiceNumber: string
+  purchaseOrderId: string
+  goodsReceiptId: string
+  supplierId: string
+  currency: string
+  subtotal: number
+  taxAmount: number
+  totalAmount: number
+  status: 'PendingApproval' | 'Approved' | 'Paid'
+  createdByUserId: string
+  approvedByUserId: string | null
+  paidByUserId: string | null
+  bankReference: string | null
+  invoiceDateUtc: string
+  dueDateUtc: string
+  createdOnUtc: string
+  approvedOnUtc: string | null
+  paidOnUtc: string | null
+}
+
+export interface AccountingJournalEntry {
+  id: string
+  entryNumber: string
+  entryType: string
+  sourceType: string
+  sourceId: string
+  currency: string
+  debitTotal: number
+  creditTotal: number
+  description: string
+  postedOnUtc: string
+}
+
+export interface CreateVendorInvoiceRequest {
+  purchaseOrderId: string
+  goodsReceiptId: string
+  supplierInvoiceNumber: string
+  invoiceDateUtc: string
+  dueDateUtc: string
+  taxAmount: number
+  lines: Array<{ productId: string; quantity: number; unitPrice: number }>
+}
+
 interface ProblemDetails {
   title?: string
   detail?: string
@@ -431,6 +497,53 @@ export const api = {
   getProcurementItems: (accessToken: string) =>
     request<CatalogItem[]>(
       '/api/products/items',
+      {},
+      accessToken,
+    ),
+
+  getAccountingInvoiceCandidates: (accessToken: string) =>
+    request<AccountingInvoiceCandidate[]>(
+      '/api/accounting/payables/invoice-candidates',
+      {},
+      accessToken,
+    ),
+
+  getAccountingPayables: (accessToken: string) =>
+    request<AccountingPayable[]>(
+      '/api/accounting/payables',
+      {},
+      accessToken,
+    ),
+
+  createVendorInvoice: (accessToken: string, payload: CreateVendorInvoiceRequest) =>
+    request<AccountingPayable>(
+      '/api/accounting/payables/vendor-invoices',
+      { method: 'POST', body: JSON.stringify(payload) },
+      accessToken,
+    ),
+
+  approveVendorPayable: (accessToken: string, payableId: string) =>
+    request<AccountingPayable>(
+      `/api/accounting/payables/${encodeURIComponent(payableId)}/approve`,
+      { method: 'POST' },
+      accessToken,
+    ),
+
+  recordVendorPayment: (
+    accessToken: string,
+    payableId: string,
+    bankReference: string,
+    paidOnUtc: string,
+  ) =>
+    request<AccountingPayable>(
+      `/api/accounting/payables/${encodeURIComponent(payableId)}/payments`,
+      { method: 'POST', body: JSON.stringify({ bankReference, paidOnUtc }) },
+      accessToken,
+    ),
+
+  getAccountingJournalEntries: (accessToken: string) =>
+    request<AccountingJournalEntry[]>(
+      '/api/accounting/journal-entries',
       {},
       accessToken,
     ),

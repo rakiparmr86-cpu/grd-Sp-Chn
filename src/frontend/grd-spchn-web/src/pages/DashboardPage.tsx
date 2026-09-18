@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { LoginResponse } from '../api'
 import { hasPermission } from '../auth'
 import { AccessProfilePermissionsPanel } from '../components/AccessProfilePermissionsPanel'
+import { AccountingWorkspace } from '../components/AccountingWorkspace'
 import { Brand, GridIcon } from '../components/Brand'
 import { CreateUserPanel } from '../components/CreateUserPanel'
 import { MaterialRequestWorkspace } from '../components/MaterialRequestWorkspace'
@@ -17,8 +18,9 @@ type MenuAction =
   | 'manage-permissions'
   | 'create-material-request'
   | 'view-material-requests'
-type DashboardView = 'dashboard' | 'material-request'
-type MenuIconName = 'identity' | 'organization' | 'procurement' | 'inventory' | 'warehouse'
+  | 'accounting'
+type DashboardView = 'dashboard' | 'material-request' | 'accounting'
+type MenuIconName = 'identity' | 'organization' | 'procurement' | 'inventory' | 'warehouse' | 'accounting'
 
 interface MoreMenuItem {
   permission: string
@@ -34,6 +36,42 @@ interface MoreMenuGroup {
 }
 
 const moreMenuGroups: MoreMenuGroup[] = [
+  {
+    title: 'Accounting',
+    icon: 'accounting',
+    items: [
+      {
+        permission: 'accounting.invoice.create',
+        label: 'Enter supplier invoice',
+        description: 'Match the invoice to PO rates and quality-approved GRN quantity.',
+        action: 'accounting',
+      },
+      {
+        permission: 'accounting.payable.read',
+        label: 'Vendor payable register',
+        description: 'Track party invoices, approvals, due dates, and payment state.',
+        action: 'accounting',
+      },
+      {
+        permission: 'accounting.payable.approve',
+        label: 'Approve vendor payable',
+        description: 'Apply separation of duties before payment release.',
+        action: 'accounting',
+      },
+      {
+        permission: 'accounting.payment.release',
+        label: 'Record bank payment',
+        description: 'Post Party Debit / Bank Credit using the real bank reference.',
+        action: 'accounting',
+      },
+      {
+        permission: 'accounting.journal.read',
+        label: 'Stock and party ledger',
+        description: 'Review immutable debit and credit journal entries.',
+        action: 'accounting',
+      },
+    ],
+  },
   {
     title: 'Identity & access',
     icon: 'identity',
@@ -182,6 +220,12 @@ function MenuIcon({ name }: { name: MenuIconName }) {
         <path d="M7 21v-7h10v7M8 10h8" />
       </>
     ),
+    accounting: (
+      <>
+        <path d="M4 7h16M6 7V5h12v2M6 11h12M7 15h3M14 15h3M7 19h3M14 19h3" />
+        <path d="M5 7v14h14V7" />
+      </>
+    ),
   }
 
   return (
@@ -259,6 +303,7 @@ export function DashboardPage({ session, onSignOut }: DashboardPageProps) {
     if (action === 'create-material-request' || action === 'view-material-requests') {
       setActiveView('material-request')
     }
+    if (action === 'accounting') setActiveView('accounting')
   }
 
   return (
@@ -406,8 +451,13 @@ export function DashboardPage({ session, onSignOut }: DashboardPageProps) {
       <main className="dashboard-canvas" aria-label="Dashboard content">
         {activeView === 'dashboard' ? (
           <h1 className="sr-only">Dashboard</h1>
-        ) : (
+        ) : activeView === 'material-request' ? (
           <MaterialRequestWorkspace
+            session={session}
+            onBack={() => setActiveView('dashboard')}
+          />
+        ) : (
+          <AccountingWorkspace
             session={session}
             onBack={() => setActiveView('dashboard')}
           />

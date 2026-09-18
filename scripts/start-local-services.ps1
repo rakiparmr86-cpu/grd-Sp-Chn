@@ -16,6 +16,7 @@ $startInfrastructureByDefault = $true
 # Set Enabled to $false (recommended), or comment out the complete row, when a
 # service is not needed locally. The VS Code compound task reads the same registry.
 $serviceRegistry = @(
+    [pscustomobject]@{ Name = "Accounting";       Enabled = $true; Port = 5310; Kind = "API"; Project = "src/backend/Services/Accounting/GRD.SpChn.Accounting.Api/GRD.SpChn.Accounting.Api.csproj" }
     [pscustomobject]@{ Name = "ApiGateway";       Enabled = $true; Port = 7000; Kind = "API Gateway"; Project = "src/backend/ApiGateway/GRD.SpChn.ApiGateway/GRD.SpChn.ApiGateway.csproj" }
     [pscustomobject]@{ Name = "Identity";         Enabled = $true; Port = 7001; Kind = "API"; Project = "src/backend/Services/Identity/GRD.SpChn.Identity.Api/GRD.SpChn.Identity.Api.csproj" }
     [pscustomobject]@{ Name = "Notifications";    Enabled = $true; Port = 7002; Kind = "API"; Project = "src/backend/Services/Notifications/GRD.SpChn.Notifications.Api/GRD.SpChn.Notifications.Api.csproj" }
@@ -125,6 +126,7 @@ function Initialize-LocalEnvironment {
     Set-DefaultEnvironmentVariable "ConnectionStrings__InventoryDatabase" $databaseConnection
     Set-DefaultEnvironmentVariable "ConnectionStrings__ProcurementDatabase" $databaseConnection
     Set-DefaultEnvironmentVariable "ConnectionStrings__WarehouseDatabase" $databaseConnection
+    Set-DefaultEnvironmentVariable "ConnectionStrings__AccountingDatabase" $databaseConnection
     Set-DefaultEnvironmentVariable "RabbitMq__HostName" "localhost"
     Set-DefaultEnvironmentVariable "RabbitMq__Port" $rabbitMqPort
     Set-DefaultEnvironmentVariable "RabbitMq__UserName" $rabbitMqUser

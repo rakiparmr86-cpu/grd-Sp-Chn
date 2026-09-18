@@ -36,13 +36,20 @@ Quality Inspector at the receiving location
                  QualityApproved Outbox row in one transaction
 Outbox Publisher -> RabbitMQ warehouse.events
   └── Procurement consumer closes PO and Material Request only after the final GRN
+  └── Accounting projects the accepted GRN and PO price
+      -> Inventory Dr / GRNI Cr
+Accounts Executive enters supplier invoice
+  -> PO rate + accepted GRN quantity + invoice are three-way matched
+  -> GRNI/Input Tax Dr / Vendor Payable Cr
+Finance Manager approves and records the completed bank payment reference
+  -> Vendor Payable Dr / Bank Cr
 ```
 
 The slice supports multiple partial receipts against one PO. Only one GRN may await
 quality inspection at a time. Over-receipt is rejected; a rejected GRN does not
 increase usable stock and its quantity becomes available for a replacement receipt.
-Over-delivery tolerance, partial acceptance inside one GRN, tax, payment, supplier
-validation and production consumption remain future slices.
+Over-delivery tolerance, partial acceptance inside one GRN, automated bank execution,
+supplier portal access, and production consumption remain future slices.
 
 ## Bounded-context ownership
 
@@ -54,6 +61,7 @@ validation and production consumption remain future slices.
 | Product Catalog | Material, category and UOM masters used by requisitions and POs | Stock balances, purchasing and receiving |
 | Supplier | Supplier master and supplier lifecycle | Purchase Orders and vendor-user authentication |
 | Inventory Management | Receiving/GRN, quarantine, quality result, usable on-hand balance and immutable stock movements | Supplier negotiation and Purchase Order approval |
+| Accounting | PO/accepted-GRN projections, GRNI accrual, invoice match, payable approval, payment record and journals | Physical receipt, stock quantity, PO negotiation and direct bank execution |
 | Outbox Publisher | Reliable publishing from service-owned Outbox tables | Business decisions |
 | API Gateway | Public HTTP routing and header forwarding | Authentication decisions and business rules |
 

@@ -3,6 +3,17 @@ using MediatR;
 
 namespace GRD.SpChn.Accounting.Application.Payables;
 
+public sealed record ListInvoiceCandidatesQuery
+    : IRequest<IReadOnlyCollection<InvoiceCandidateResponse>>, IAccountingTransactionalRequest;
+
+internal sealed class ListInvoiceCandidatesQueryHandler(IAccountingRepository repository)
+    : IRequestHandler<ListInvoiceCandidatesQuery, IReadOnlyCollection<InvoiceCandidateResponse>>
+{
+    public Task<IReadOnlyCollection<InvoiceCandidateResponse>> Handle(
+        ListInvoiceCandidatesQuery request,
+        CancellationToken cancellationToken) => repository.ListInvoiceCandidatesAsync(cancellationToken);
+}
+
 public sealed record ListPayablesQuery
     : IRequest<IReadOnlyCollection<PayableResponse>>, IAccountingTransactionalRequest;
 

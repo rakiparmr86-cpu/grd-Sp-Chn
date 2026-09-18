@@ -23,6 +23,9 @@ public interface IAccountingRepository
         Guid goodsReceiptId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<InvoiceCandidateResponse>> ListInvoiceCandidatesAsync(
+        CancellationToken cancellationToken = default);
+
     Task<bool> SupplierInvoiceExistsAsync(
         Guid supplierId,
         string supplierInvoiceNumber,

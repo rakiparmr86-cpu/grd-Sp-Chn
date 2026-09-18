@@ -9,6 +9,27 @@
       "justMyCode": true
     },
     {
+      "name": "GRD: Accounting API (5310)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "GRD: Debug prepare Accounting",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Accounting\\GRD.SpChn.Accounting.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Accounting.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Accounting\\GRD.SpChn.Accounting.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "justMyCode": true,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost",
+        "RabbitMq__Port": "5672",
+        "RabbitMq__UserName": "grd",
+        "RabbitMq__Password": "grd-local"
+      }
+    },
+    {
       "name": "GRD: API Gateway (7000)",
       "type": "coreclr",
       "request": "launch",
@@ -119,6 +140,7 @@
         "ConnectionStrings__OrderDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
         "ConnectionStrings__ProcurementDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
         "ConnectionStrings__WarehouseDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__AccountingDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
         "RabbitMq__HostName": "localhost",
         "RabbitMq__Port": "5672",
         "RabbitMq__UserName": "grd",
@@ -132,6 +154,21 @@
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}\\src\\frontend\\grd-spchn-web\\src",
       "sourceMaps": true
+    },
+    {
+      "name": "GRD internal: Accounting",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}\\src\\backend\\Services\\Accounting\\GRD.SpChn.Accounting.Api\\bin\\Debug\\net10.0\\GRD.SpChn.Accounting.Api.dll",
+      "cwd": "${workspaceFolder}\\src\\backend\\Services\\Accounting\\GRD.SpChn.Accounting.Api",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "ConnectionStrings__Database": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
+      },
+      "presentation": { "hidden": true }
     },
     {
       "name": "GRD internal: ApiGateway",
@@ -342,6 +379,7 @@
         "ConnectionStrings__InventoryDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
         "ConnectionStrings__ProcurementDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
         "ConnectionStrings__WarehouseDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
+        "ConnectionStrings__AccountingDatabase": "Server=localhost;Port=3308;Database=grd_local;User ID=grd;Password=grd-local;SslMode=None",
         "RabbitMq__HostName": "localhost", "RabbitMq__Port": "5672", "RabbitMq__UserName": "grd", "RabbitMq__Password": "grd-local"
       },
       "presentation": { "hidden": true }
@@ -381,6 +419,7 @@
     {
       "name": "GRD: Start ALL backend services with debugger",
       "configurations": [
+        "GRD internal: Accounting",
         "GRD internal: ApiGateway",
         "GRD internal: Identity",
         "GRD internal: Notifications",

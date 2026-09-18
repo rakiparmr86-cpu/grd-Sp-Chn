@@ -299,6 +299,30 @@ public sealed class IntegrationEventContractTests
             copy.RecipientPermissionCodes);
     }
 
+    [Fact]
+    public void Vendor_payment_contract_round_trips_financial_reference()
+    {
+        var payment = new VendorPaymentReleasedIntegrationEvent(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            1180m,
+            "INR",
+            "UTR-20260918-001",
+            new DateTime(2026, 9, 18, 11, 0, 0, DateTimeKind.Utc));
+
+        var copy = RoundTrip(payment);
+
+        AssertEnvelopeEqual(payment, copy);
+        Assert.Equal(payment.PaymentId, copy.PaymentId);
+        Assert.Equal(payment.PayableId, copy.PayableId);
+        Assert.Equal(payment.Amount, copy.Amount);
+        Assert.Equal(payment.BankReference, copy.BankReference);
+        Assert.Equal(payment.PaidOnUtc, copy.PaidOnUtc);
+    }
+
     private static T RoundTrip<T>(T integrationEvent)
         where T : IIntegrationEvent
     {

@@ -10,7 +10,11 @@ location-specific Inventory. See
 [ERP Store Request to Material Receipt](docs/erp-procure-to-receive.md) for module
 ownership, roles, API steps, events, setup and current limitations.
 
-For a complete inventory of all 13 service boundaries, 17 .NET executable
+The receive-to-pay continuation—quality-approved GRN, supplier invoice, three-way
+match, approval, payment reference, and double-entry journals—is documented in
+[Accounting: receive-to-pay](docs/accounting-payables.md).
+
+For a complete inventory of all 14 service boundaries, 17 .NET executable
 processes, the React web process, implementation status, responsibilities, project layers, technologies,
 known gaps, and the full request/event flow, see
 [GRD Supply Chain system overview](docs/system-overview.md).
@@ -150,6 +154,7 @@ path to the owning service:
 
 | Client request | Forwarded destination |
 | --- | --- |
+| `GET http://localhost:7000/api/accounting/payables` | Accounting `GET http://localhost:5310/payables` |
 | `GET http://localhost:7000/api/identity/health` | Identity `GET http://localhost:7001/health` |
 | `GET http://localhost:7000/api/notifications/health` | Notifications `GET http://localhost:7002/health` |
 | `GET http://localhost:7000/api/identity/health/ready` | Identity readiness endpoint |

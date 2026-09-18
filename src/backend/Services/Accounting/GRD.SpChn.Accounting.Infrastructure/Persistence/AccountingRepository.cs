@@ -256,6 +256,75 @@ internal sealed class AccountingRepository(AccountingUnitOfWork unitOfWork)
             unitOfWork.Transaction,
             cancellationToken: cancellationToken));
 
+    public async Task<IReadOnlyCollection<InvoiceCandidateResponse>> ListInvoiceCandidatesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var rows = (await unitOfWork.Connection.QueryAsync<InvoiceCandidateRow>(new CommandDefinition(
+            """
+            SELECT
+                po.purchase_order_id AS PurchaseOrderId,
+                po.purchase_order_number AS PurchaseOrderNumber,
+                receipt.goods_receipt_id AS GoodsReceiptId,
+                receipt.goods_receipt_number AS GoodsReceiptNumber,
+                po.supplier_id AS SupplierId,
+                po.currency AS Currency,
+                receipt.accepted_on_utc AS AcceptedOnUtc,
+                accepted.product_id AS ProductId,
+                accepted.accepted_quantity AS AcceptedQuantity,
+                COALESCE(invoiced.invoiced_quantity, 0) AS AlreadyInvoicedQuantity,
+                accepted.accepted_quantity - COALESCE(invoiced.invoiced_quantity, 0) AS RemainingQuantity,
+                accepted.unit_of_measure AS UnitOfMeasure,
+                po_item.unit_price AS PurchaseOrderUnitPrice
+            FROM accounting_accepted_receipts receipt
+            INNER JOIN accounting_purchase_orders po
+                    ON po.purchase_order_id = receipt.purchase_order_id
+            INNER JOIN accounting_accepted_receipt_items accepted
+                    ON accepted.goods_receipt_id = receipt.goods_receipt_id
+            INNER JOIN accounting_purchase_order_items po_item
+                    ON po_item.purchase_order_id = receipt.purchase_order_id
+                   AND po_item.product_id = accepted.product_id
+            LEFT JOIN
+            (
+                SELECT payable.goods_receipt_id, line.product_id, SUM(line.quantity) AS invoiced_quantity
+                FROM accounting_vendor_payables payable
+                INNER JOIN accounting_vendor_invoice_lines line ON line.payable_id = payable.id
+                GROUP BY payable.goods_receipt_id, line.product_id
+            ) invoiced ON invoiced.goods_receipt_id = receipt.goods_receipt_id
+                      AND invoiced.product_id = accepted.product_id
+            ORDER BY receipt.accepted_on_utc DESC, accepted.product_id;
+            """,
+            transaction: unitOfWork.Transaction,
+            cancellationToken: cancellationToken))).AsList();
+
+        return rows
+            .GroupBy(row => new
+            {
+                row.PurchaseOrderId,
+                row.PurchaseOrderNumber,
+                row.GoodsReceiptId,
+                row.GoodsReceiptNumber,
+                row.SupplierId,
+                row.Currency,
+                row.AcceptedOnUtc
+            })
+            .Select(group => new InvoiceCandidateResponse(
+                group.Key.PurchaseOrderId,
+                group.Key.PurchaseOrderNumber,
+                group.Key.GoodsReceiptId,
+                group.Key.GoodsReceiptNumber,
+                group.Key.SupplierId,
+                group.Key.Currency,
+                group.Key.AcceptedOnUtc,
+                group.Select(row => new InvoiceCandidateItem(
+                    row.ProductId,
+                    row.AcceptedQuantity,
+                    row.AlreadyInvoicedQuantity,
+                    row.RemainingQuantity,
+                    row.UnitOfMeasure,
+                    row.PurchaseOrderUnitPrice)).ToArray()))
+            .ToArray();
+    }
+
     public async Task<IReadOnlyDictionary<Guid, decimal>> GetInvoicedQuantitiesAsync(
         Guid goodsReceiptId,
         CancellationToken cancellationToken = default)
@@ -546,6 +615,23 @@ internal sealed class AccountingRepository(AccountingUnitOfWork unitOfWork)
     {
         public Guid ProductId { get; set; }
         public decimal Quantity { get; set; }
+    }
+
+    private sealed class InvoiceCandidateRow
+    {
+        public Guid PurchaseOrderId { get; set; }
+        public string PurchaseOrderNumber { get; set; } = string.Empty;
+        public Guid GoodsReceiptId { get; set; }
+        public string GoodsReceiptNumber { get; set; } = string.Empty;
+        public Guid SupplierId { get; set; }
+        public string Currency { get; set; } = string.Empty;
+        public DateTime AcceptedOnUtc { get; set; }
+        public Guid ProductId { get; set; }
+        public decimal AcceptedQuantity { get; set; }
+        public decimal AlreadyInvoicedQuantity { get; set; }
+        public decimal RemainingQuantity { get; set; }
+        public string UnitOfMeasure { get; set; } = string.Empty;
+        public decimal PurchaseOrderUnitPrice { get; set; }
     }
 
     private sealed class PayableRow
