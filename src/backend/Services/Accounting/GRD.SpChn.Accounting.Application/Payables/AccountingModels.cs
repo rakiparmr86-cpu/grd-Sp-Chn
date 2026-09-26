@@ -69,3 +69,40 @@ public sealed record JournalEntryResponse(
     decimal CreditTotal,
     string Description,
     DateTime PostedOnUtc);
+
+public sealed record PayableDetailLine(
+    Guid ProductId,
+    string UnitOfMeasure,
+    decimal? PurchaseOrderQuantity,
+    decimal? AcceptedQuantity,
+    decimal InvoicedQuantity,
+    decimal? PurchaseOrderUnitPrice,
+    decimal InvoiceUnitPrice,
+    decimal LineAmount);
+
+public sealed record PaymentBatchSummary(
+    Guid Id,
+    string BatchNumber,
+    string BankReference,
+    decimal TotalAmount,
+    int PayableCount,
+    DateTime PaidOnUtc);
+
+public sealed record PayableDetailResponse(
+    PayableResponse Payable,
+    string? PurchaseOrderNumber,
+    string? GoodsReceiptNumber,
+    DateTime? AcceptedOnUtc,
+    IReadOnlyCollection<PayableDetailLine> Lines,
+    PaymentBatchSummary? PaymentBatch,
+    IReadOnlyCollection<JournalEntryResponse> JournalEntries);
+
+public sealed record PaymentBatchResponse(
+    Guid Id,
+    string BatchNumber,
+    Guid SupplierId,
+    string Currency,
+    decimal TotalAmount,
+    string BankReference,
+    DateTime PaidOnUtc,
+    IReadOnlyCollection<PayableResponse> Payables);

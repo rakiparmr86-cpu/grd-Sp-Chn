@@ -1,5 +1,6 @@
 using GRD.SpChn.Accounting.Application.Abstractions;
 using GRD.SpChn.Accounting.Application.IntegrationEvents;
+using GRD.SpChn.Accounting.Application.Ledger;
 using GRD.SpChn.Accounting.Infrastructure.Inbox;
 using GRD.SpChn.Accounting.Infrastructure.Outbox;
 using GRD.SpChn.Accounting.Infrastructure.Persistence;
@@ -23,6 +24,8 @@ public static class DependencyInjection
         services.AddScoped<IAccountingUnitOfWork>(provider =>
             provider.GetRequiredService<AccountingUnitOfWork>());
         services.AddScoped<IAccountingRepository, AccountingRepository>();
+        services.AddScoped<IAccountLedgerReader, AccountLedgerReader>();
+        services.AddScoped<IAccountBalancesReader, AccountBalancesReader>();
         services.AddScoped<IAccountingInboxStore, AccountingInboxStore>();
         services.AddScoped<IAccountingOutboxWriter, AccountingOutboxWriter>();
         services.AddRabbitMqConsumer<

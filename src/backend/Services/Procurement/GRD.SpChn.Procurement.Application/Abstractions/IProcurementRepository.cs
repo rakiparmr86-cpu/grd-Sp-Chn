@@ -7,9 +7,12 @@ public interface IProcurementRepository
 {
     Task AddMaterialRequestAsync(MaterialRequest request, CancellationToken cancellationToken = default);
     Task<MaterialRequest?> GetMaterialRequestAsync(Guid id, CancellationToken cancellationToken = default);
+    // Optional date bounds: from is inclusive, to is exclusive.
     Task<IReadOnlyCollection<MaterialRequestListItemResponse>> ListMaterialRequestsAsync(
         Guid organizationUnitId,
         bool includeAllOrganizationUnits,
+        DateTime? createdFromUtc,
+        DateTime? createdToUtc,
         CancellationToken cancellationToken = default);
     Task<MaterialRequest?> GetMaterialRequestForUpdateAsync(Guid id, CancellationToken cancellationToken = default);
     Task UpdateMaterialRequestAsync(MaterialRequest request, CancellationToken cancellationToken = default);
@@ -20,6 +23,8 @@ public interface IProcurementRepository
     Task<IReadOnlyCollection<PurchaseOrder>> ListPurchaseOrdersAsync(
         Guid organizationUnitId,
         bool includeAllOrganizationUnits,
+        DateTime? issuedFromUtc,
+        DateTime? issuedToUtc,
         CancellationToken cancellationToken = default);
     Task<PurchaseOrder?> GetPurchaseOrderAsync(Guid id, CancellationToken cancellationToken = default);
     Task<PurchaseOrder?> GetPurchaseOrderForUpdateAsync(Guid id, CancellationToken cancellationToken = default);

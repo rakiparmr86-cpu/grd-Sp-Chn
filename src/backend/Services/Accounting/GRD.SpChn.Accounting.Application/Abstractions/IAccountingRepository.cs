@@ -38,8 +38,21 @@ public interface IAccountingRepository
     Task AddPayableAsync(VendorPayable payable, CancellationToken cancellationToken = default);
     Task<VendorPayable?> GetPayableForUpdateAsync(Guid id, CancellationToken cancellationToken = default);
     Task UpdatePayableAsync(VendorPayable payable, CancellationToken cancellationToken = default);
-    Task AddPaymentAsync(Guid paymentId, VendorPayable payable, CancellationToken cancellationToken = default);
+    Task AddPaymentAsync(Guid paymentId, VendorPayable payable, Guid paymentBatchId, CancellationToken cancellationToken = default);
+    Task<bool> BankReferenceExistsAsync(string bankReference, CancellationToken cancellationToken = default);
+    Task AddPaymentBatchAsync(
+        Guid id,
+        string batchNumber,
+        Guid supplierId,
+        string currency,
+        decimal totalAmount,
+        int payableCount,
+        string bankReference,
+        Guid paidByUserId,
+        DateTime paidOnUtc,
+        CancellationToken cancellationToken = default);
     Task AddJournalEntryAsync(JournalEntry entry, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<PayableResponse>> ListPayablesAsync(CancellationToken cancellationToken = default);
+    Task<PayableDetailResponse?> GetPayableDetailAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<JournalEntryResponse>> ListJournalEntriesAsync(CancellationToken cancellationToken = default);
 }

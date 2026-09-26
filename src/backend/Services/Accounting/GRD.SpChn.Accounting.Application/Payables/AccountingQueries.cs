@@ -35,3 +35,14 @@ internal sealed class ListJournalEntriesQueryHandler(IAccountingRepository repos
         ListJournalEntriesQuery request,
         CancellationToken cancellationToken) => repository.ListJournalEntriesAsync(cancellationToken);
 }
+
+public sealed record GetPayableDetailQuery(Guid PayableId)
+    : IRequest<PayableDetailResponse?>, IAccountingTransactionalRequest;
+
+internal sealed class GetPayableDetailQueryHandler(IAccountingRepository repository)
+    : IRequestHandler<GetPayableDetailQuery, PayableDetailResponse?>
+{
+    public Task<PayableDetailResponse?> Handle(
+        GetPayableDetailQuery request,
+        CancellationToken cancellationToken) => repository.GetPayableDetailAsync(request.PayableId, cancellationToken);
+}

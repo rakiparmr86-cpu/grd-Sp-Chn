@@ -52,8 +52,11 @@ adapter can replace this manual recording step without changing the payable aggr
 | GET | `/api/accounting/payables/invoice-candidates` | `accounting.invoice.create` | List quality-approved GRNs and remaining invoiceable quantity. |
 | POST | `/api/accounting/payables/vendor-invoices` | `accounting.invoice.create` | Record a supplier invoice after three-way matching. |
 | GET | `/api/accounting/payables` | `accounting.payable.read` | View payable, approval, and payment states. |
+| GET | `/api/accounting/payables/{id}` | `accounting.payable.read` | Payable detail: PO/GRN numbers, PO vs accepted vs invoiced lines, payment batch, linked journal entries. |
 | POST | `/api/accounting/payables/{id}/approve` | `accounting.payable.approve` | Approve a payable under separation of duties. |
-| POST | `/api/accounting/payables/{id}/payments` | `accounting.payment.release` | Record external bank reference and payment date. |
+| POST | `/api/accounting/payables/batch-approvals` | `accounting.payable.approve` | Approve up to 100 payables all-or-nothing (`{ payableIds }`); any self-created or non-pending payable rejects the batch. |
+| POST | `/api/accounting/payables/{id}/payments` | `accounting.payment.release` | Record external bank reference and payment date (a payment batch of one). |
+| POST | `/api/accounting/payables/payment-batches` | `accounting.payment.release` | One executed bank transfer settling up to 100 approved payables of **one supplier and currency** (`{ payableIds, bankReference, paidOnUtc }`). |
 | GET | `/api/accounting/journal-entries` | `accounting.journal.read` | View immutable balanced journal summaries. |
 
 ## Service-owned data
@@ -63,6 +66,20 @@ creates Accounting-owned PO/GRN projections, vendor payables and invoice lines, 
 records, journal headers/lines, Inbox, and Outbox. The local upgrade portion copies old
 demo rows once so existing accepted GRNs remain usable. Runtime Accounting code never
 reads or writes Procurement, Warehouse, Inventory, or Supplier tables.
+
+Migration [`013_accounting_payment_batches.sql`](../deploy/docker/mysql/init/013_accounting_payment_batches.sql)
+adds `accounting_payment_batches`. The bank reference is unique per batch; every paid
+payable keeps its own `accounting_payments` row linked by `payment_batch_id`. Payments
+recorded before batches existed are back-filled as single-payable batches.
+
+## Payment batches
+
+- A batch is one real bank transfer: same supplier, same currency, all payables `Approved`.
+- One balanced journal entry (Dr `VENDOR_PAYABLE` / Cr `BANK`) is posted for the batch
+  total with source type `AccountingPaymentBatch`; one `VendorPaymentReleased` event is
+  still emitted per payable so downstream consumers are unchanged.
+- Batch approval and batch payment validate every payable before writing anything, so a
+  rejected batch leaves all payables untouched.
 
 ## Reliability and transaction boundaries
 

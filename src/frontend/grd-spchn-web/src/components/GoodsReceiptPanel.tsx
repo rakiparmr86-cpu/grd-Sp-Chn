@@ -8,6 +8,8 @@ import {
   type GoodsReceipt,
   type QualityInspection,
 } from '../api'
+import { ScreenName } from './ScreenName'
+import { SCREEN } from '../config/screens'
 
 interface GoodsReceiptPanelProps {
   accessToken: string
@@ -176,7 +178,7 @@ export function GoodsReceiptPanel({
         <header className="drawer-header">
           <div>
             <span className="eyebrow">Warehouse / Store</span>
-            <h2 id="goods-receipt-title">Receive and inspect material.</h2>
+            <h2 id="goods-receipt-title"><ScreenName id={SCREEN.goodsReceipt} /></h2>
             <p>Physical receipt creates quarantine stock. Quality approval releases usable inventory.</p>
           </div>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close">×</button>

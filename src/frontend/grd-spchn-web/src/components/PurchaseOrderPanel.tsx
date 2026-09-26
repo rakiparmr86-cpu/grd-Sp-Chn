@@ -7,6 +7,8 @@ import {
   type PurchaseOrder,
   type Supplier,
 } from '../api'
+import { ScreenName } from './ScreenName'
+import { SCREEN } from '../config/screens'
 
 interface PurchaseOrderPanelProps {
   accessToken: string
@@ -136,7 +138,7 @@ export function PurchaseOrderPanel({
         <header className="drawer-header">
           <div>
             <span className="eyebrow">Procurement</span>
-            <h2 id="purchase-order-title">Create PO.</h2>
+            <h2 id="purchase-order-title"><ScreenName id={SCREEN.purchaseOrder} /></h2>
             <p>Convert an approved requisition into a supplier commitment.</p>
           </div>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close">×</button>

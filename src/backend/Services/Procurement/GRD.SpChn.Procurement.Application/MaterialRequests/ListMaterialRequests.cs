@@ -5,7 +5,9 @@ namespace GRD.SpChn.Procurement.Application.MaterialRequests;
 
 public sealed record ListMaterialRequestsQuery(
     Guid OrganizationUnitId,
-    bool IncludeAllOrganizationUnits)
+    bool IncludeAllOrganizationUnits,
+    DateTime? CreatedFromUtc = null,
+    DateTime? CreatedToUtc = null)
     : IRequest<IReadOnlyCollection<MaterialRequestListItemResponse>>;
 
 public sealed record MaterialRequestListItemResponse(
@@ -32,5 +34,7 @@ internal sealed class ListMaterialRequestsQueryHandler(IProcurementRepository re
         repository.ListMaterialRequestsAsync(
             request.OrganizationUnitId,
             request.IncludeAllOrganizationUnits,
+            request.CreatedFromUtc,
+            request.CreatedToUtc,
             cancellationToken);
 }

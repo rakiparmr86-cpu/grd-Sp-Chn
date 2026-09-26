@@ -225,6 +225,47 @@ export interface Supplier {
   status: string
 }
 
+export interface StockLedgerProductSummary {
+  productId: string
+  openingQuantity: number
+  inQuantity: number
+  outQuantity: number
+  closingQuantity: number
+  onHandQuantity: number
+}
+
+export interface StockLocation {
+  id: string
+  parentId: string | null
+  code: string
+  name: string
+}
+
+export interface StockLedgerEntry {
+  movementId: string
+  occurredOnUtc: string
+  organizationUnitId: string
+  productId: string
+  movementType: string
+  inQuantity: number
+  outQuantity: number
+  balanceQuantity: number
+  sourceType: string
+  sourceId: string
+  goodsReceiptNumber: string | null
+  purchaseOrderId: string | null
+  purchaseOrderNumber: string | null
+  supplierId: string | null
+}
+
+export interface StockLedger {
+  organizationUnitId: string
+  fromUtc: string
+  toUtc: string
+  products: StockLedgerProductSummary[]
+  entries: StockLedgerEntry[]
+}
+
 export interface AccountingInvoiceCandidateItem {
   productId: string
   acceptedQuantity: number
@@ -268,6 +309,62 @@ export interface AccountingPayable {
   paidOnUtc: string | null
 }
 
+export interface LedgerAccount {
+  code: string
+  name: string
+}
+
+export interface LedgerOpeningBalance {
+  accountCode: string
+  supplierId: string | null
+  debit: number
+  credit: number
+}
+
+export interface LedgerLine {
+  journalEntryId: string
+  entryNumber: string
+  entryType: string
+  postedOnUtc: string
+  lineNumber: number
+  accountCode: string
+  debit: number
+  credit: number
+  description: string
+  supplierId: string | null
+  voucherReference: string | null
+  contraAccounts: string[]
+}
+
+export type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Income' | 'Expense' | 'Unclassified'
+
+export interface AccountBalance {
+  code: string
+  name: string
+  type: AccountType
+  group: string
+  openingDebit: number
+  openingCredit: number
+  periodDebit: number
+  periodCredit: number
+  // Positive = debit balance, negative = credit balance.
+  closing: number
+}
+
+export interface AccountBalances {
+  fromUtc: string
+  toUtc: string
+  accounts: AccountBalance[]
+}
+
+export interface AccountLedger {
+  fromUtc: string
+  toUtc: string
+  accounts: LedgerAccount[]
+  openingBalances: LedgerOpeningBalance[]
+  lines: LedgerLine[]
+}
+
 export interface AccountingJournalEntry {
   id: string
   entryNumber: string
@@ -279,6 +376,47 @@ export interface AccountingJournalEntry {
   creditTotal: number
   description: string
   postedOnUtc: string
+}
+
+export interface AccountingPayableDetailLine {
+  productId: string
+  unitOfMeasure: string
+  purchaseOrderQuantity: number | null
+  acceptedQuantity: number | null
+  invoicedQuantity: number
+  purchaseOrderUnitPrice: number | null
+  invoiceUnitPrice: number
+  lineAmount: number
+}
+
+export interface AccountingPaymentBatchSummary {
+  id: string
+  batchNumber: string
+  bankReference: string
+  totalAmount: number
+  payableCount: number
+  paidOnUtc: string
+}
+
+export interface AccountingPayableDetail {
+  payable: AccountingPayable
+  purchaseOrderNumber: string | null
+  goodsReceiptNumber: string | null
+  acceptedOnUtc: string | null
+  lines: AccountingPayableDetailLine[]
+  paymentBatch: AccountingPaymentBatchSummary | null
+  journalEntries: AccountingJournalEntry[]
+}
+
+export interface AccountingPaymentBatch {
+  id: string
+  batchNumber: string
+  supplierId: string
+  currency: string
+  totalAmount: number
+  bankReference: string
+  paidOnUtc: string
+  payables: AccountingPayable[]
 }
 
 export interface CreateVendorInvoiceRequest {
@@ -341,6 +479,20 @@ async function request<T>(
   return (await response.json()) as T
 }
 
+// UTC instants; from is inclusive and to is exclusive. Either bound may be omitted.
+export interface DateRangeFilter {
+  fromUtc?: string
+  toUtc?: string
+}
+
+function dateRangeQuery(range?: DateRangeFilter): string {
+  const query = new URLSearchParams()
+  if (range?.fromUtc) query.set('fromUtc', range.fromUtc)
+  if (range?.toUtc) query.set('toUtc', range.toUtc)
+  const text = query.toString()
+  return text ? `?${text}` : ''
+}
+
 export const api = {
   login: (userName: string, password: string) =>
     request<LoginResponse>('/api/identity/auth/login', {
@@ -400,9 +552,9 @@ export const api = {
       accessToken,
     ),
 
-  listMaterialRequests: (accessToken: string) =>
+  listMaterialRequests: (accessToken: string, range?: DateRangeFilter) =>
     request<MaterialRequestListItem[]>(
-      '/api/procurement/material-requests',
+      `/api/procurement/material-requests${dateRangeQuery(range)}`,
       {},
       accessToken,
     ),
@@ -432,9 +584,9 @@ export const api = {
       accessToken,
     ),
 
-  listPurchaseOrders: (accessToken: string) =>
+  listPurchaseOrders: (accessToken: string, range?: DateRangeFilter) =>
     request<PurchaseOrder[]>(
-      '/api/procurement/purchase-orders',
+      `/api/procurement/purchase-orders${dateRangeQuery(range)}`,
       {},
       accessToken,
     ),
@@ -494,6 +646,23 @@ export const api = {
       accessToken,
     ),
 
+  // The server only accepts the user's own location or one below it (403 otherwise).
+  getStockLedger: (
+    accessToken: string,
+    fromUtc: string,
+    toUtc: string,
+    locationId?: string,
+    productId?: string,
+  ) => {
+    const query = new URLSearchParams({ fromUtc, toUtc })
+    if (locationId) query.set('locationId', locationId)
+    if (productId) query.set('productId', productId)
+    return request<StockLedger>(`/api/inventory/stock/ledger?${query}`, {}, accessToken)
+  },
+
+  getStockLedgerLocations: (accessToken: string) =>
+    request<StockLocation[]>('/api/inventory/stock/ledger/locations', {}, accessToken),
+
   getProcurementItems: (accessToken: string) =>
     request<CatalogItem[]>(
       '/api/products/items',
@@ -522,28 +691,51 @@ export const api = {
       accessToken,
     ),
 
-  approveVendorPayable: (accessToken: string, payableId: string) =>
-    request<AccountingPayable>(
-      `/api/accounting/payables/${encodeURIComponent(payableId)}/approve`,
-      { method: 'POST' },
+  getAccountingPayableDetail: (accessToken: string, payableId: string) =>
+    request<AccountingPayableDetail>(
+      `/api/accounting/payables/${encodeURIComponent(payableId)}`,
+      {},
       accessToken,
     ),
 
-  recordVendorPayment: (
+  // All-or-nothing: one payable that cannot be approved rejects the whole batch.
+  approveVendorPayables: (accessToken: string, payableIds: string[]) =>
+    request<AccountingPayable[]>(
+      '/api/accounting/payables/batch-approvals',
+      { method: 'POST', body: JSON.stringify({ payableIds }) },
+      accessToken,
+    ),
+
+  // One executed bank transfer settling approved payables of a single supplier.
+  recordVendorPaymentBatch: (
     accessToken: string,
-    payableId: string,
+    payableIds: string[],
     bankReference: string,
     paidOnUtc: string,
   ) =>
-    request<AccountingPayable>(
-      `/api/accounting/payables/${encodeURIComponent(payableId)}/payments`,
-      { method: 'POST', body: JSON.stringify({ bankReference, paidOnUtc }) },
+    request<AccountingPaymentBatch>(
+      '/api/accounting/payables/payment-batches',
+      { method: 'POST', body: JSON.stringify({ payableIds, bankReference, paidOnUtc }) },
       accessToken,
     ),
 
   getAccountingJournalEntries: (accessToken: string) =>
     request<AccountingJournalEntry[]>(
       '/api/accounting/journal-entries',
+      {},
+      accessToken,
+    ),
+
+  getAccountBalances: (accessToken: string, fromUtc: string, toUtc: string) =>
+    request<AccountBalances>(
+      `/api/accounting/ledger/balances?${new URLSearchParams({ fromUtc, toUtc })}`,
+      {},
+      accessToken,
+    ),
+
+  getAccountLedger: (accessToken: string, fromUtc: string, toUtc: string) =>
+    request<AccountLedger>(
+      `/api/accounting/ledger?${new URLSearchParams({ fromUtc, toUtc })}`,
       {},
       accessToken,
     ),

@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   api,
   ApiError,
   type CatalogItem,
   type LoginResponse,
-  type MaterialRequest,
   type MaterialRequestListItem,
   type OrganizationUnit,
   type PurchaseOrder,
@@ -14,10 +13,16 @@ import { hasPermission } from '../auth'
 import { PurchaseOrderPanel } from './PurchaseOrderPanel'
 import { VendorDispatchPanel } from './VendorDispatchPanel'
 import { GoodsReceiptPanel } from './GoodsReceiptPanel'
+import { DateRangeSearch } from './DateRangeSearch'
+import { ScreenName } from './ScreenName'
+import { SCREEN } from '../config/screens'
+import { dateRangeError, toDateRangeFilter } from '../dateRange'
 
 interface MaterialRequestWorkspaceProps {
   session: LoginResponse
   onBack: () => void
+  // Incremented by the dashboard menu to open the create popup on top of the list.
+  createRequestSignal?: number
 }
 
 interface MaterialLineForm {
@@ -40,6 +45,7 @@ function createLine(catalog: CatalogItem[], catalogIndex = 0): MaterialLineForm 
 export function MaterialRequestWorkspace({
   session,
   onBack,
+  createRequestSignal = 0,
 }: MaterialRequestWorkspaceProps) {
   const [organizationUnits, setOrganizationUnits] = useState<OrganizationUnit[]>([])
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
@@ -49,10 +55,14 @@ export function MaterialRequestWorkspace({
   const [lines, setLines] = useState<MaterialLineForm[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [created, setCreated] = useState<MaterialRequest | null>(null)
   const [requests, setRequests] = useState<MaterialRequestListItem[]>([])
   const [listLoading, setListLoading] = useState(true)
   const [listError, setListError] = useState('')
+  // Dates are filtered by the server when Search is pressed; number and status filter instantly.
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [requestNumberFilter, setRequestNumberFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const canCreateRequest = hasPermission(session, 'procurement.material-request.create')
   const canApproveRequest = hasPermission(session, 'procurement.material-request.approve')
   const canCreatePurchaseOrder = hasPermission(session, 'procurement.purchase-order.create')
@@ -66,10 +76,13 @@ export function MaterialRequestWorkspace({
   const [workflowMessage, setWorkflowMessage] = useState('')
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [purchaseOrdersLoading, setPurchaseOrdersLoading] = useState(canReadPurchaseOrders)
-  const [purchaseOrdersError, setPurchaseOrdersError] = useState('')
   const [dispatchOrder, setDispatchOrder] = useState<PurchaseOrder | null>(null)
   const [receiptRequest, setReceiptRequest] = useState<MaterialRequestListItem | null>(null)
+  const [createOpen, setCreateOpen] = useState(canCreateRequest && createRequestSignal > 0)
+
+  useEffect(() => {
+    if (canCreateRequest && createRequestSignal > 0) setCreateOpen(true)
+  }, [canCreateRequest, createRequestSignal])
 
   useEffect(() => {
     let active = true
@@ -95,19 +108,6 @@ export function MaterialRequestWorkspace({
       .catch(() => {
         // The authenticated organization id remains authoritative if names cannot be loaded.
       })
-    api.listMaterialRequests(session.accessToken)
-      .then((items) => {
-        if (active) setRequests(items)
-      })
-      .catch((reason: unknown) => {
-        if (!active) return
-        setListError(reason instanceof ApiError
-          ? reason.message
-          : 'Could not load requisitions.')
-      })
-      .finally(() => {
-        if (active) setListLoading(false)
-      })
 
     if (canReadPurchaseOrders) {
       Promise.all([
@@ -121,12 +121,9 @@ export function MaterialRequestWorkspace({
         })
         .catch((reason: unknown) => {
           if (!active) return
-          setPurchaseOrdersError(reason instanceof ApiError
+          setListError(reason instanceof ApiError
             ? reason.message
-            : 'Could not load purchase orders.')
-        })
-        .finally(() => {
-          if (active) setPurchaseOrdersLoading(false)
+            : 'Could not load purchase orders for the Action column.')
         })
     }
 
@@ -144,7 +141,6 @@ export function MaterialRequestWorkspace({
     setLines((current) => current.map((line) => (
       line.key === key ? { ...line, ...updates } : line
     )))
-    setCreated(null)
   }
 
   function selectMaterial(key: string, productId: string) {
@@ -160,19 +156,16 @@ export function MaterialRequestWorkspace({
       (material) => !lines.some((line) => line.productId === material.id),
     )
     setLines((current) => [...current, createLine(catalogItems, unusedIndex >= 0 ? unusedIndex : 0)])
-    setCreated(null)
   }
 
   function removeLine(key: string) {
     setLines((current) => current.filter((line) => line.key !== key))
-    setCreated(null)
   }
 
   function resetForm() {
     setPurpose('')
     setLines(catalogItems.length > 0 ? [createLine(catalogItems)] : [])
     setError('')
-    setCreated(null)
 
     if (lines.length === 0) {
       setError('Select at least one active item from Product Catalog.')
@@ -180,11 +173,26 @@ export function MaterialRequestWorkspace({
     }
   }
 
-  async function refreshRequests() {
+  function openCreate() {
+    setWorkflowMessage('')
+    setCreateOpen(true)
+  }
+
+  function closeCreate() {
+    if (submitting) return
+    setCreateOpen(false)
+    setError('')
+  }
+
+  const refreshRequests = useCallback(async () => {
+    if (dateRangeError(fromDate, toDate)) return
     setListLoading(true)
     setListError('')
     try {
-      setRequests(await api.listMaterialRequests(session.accessToken))
+      setRequests(await api.listMaterialRequests(
+        session.accessToken,
+        toDateRangeFilter(fromDate, toDate),
+      ))
     } catch (reason) {
       setListError(reason instanceof ApiError
         ? reason.message
@@ -192,12 +200,42 @@ export function MaterialRequestWorkspace({
     } finally {
       setListLoading(false)
     }
+  }, [fromDate, session.accessToken, toDate])
+
+  useEffect(() => {
+    void refreshRequests()
+  }, [refreshRequests])
+
+  // Searching the same range again simply reloads it.
+  function applyDates(nextFrom: string, nextTo: string) {
+    if (nextFrom === fromDate && nextTo === toDate) {
+      void refreshRequests()
+      return
+    }
+    setFromDate(nextFrom)
+    setToDate(nextTo)
   }
 
+  const statusOptions = useMemo(
+    () => [...new Set(requests.map((request) => request.status))].sort(),
+    [requests],
+  )
+  const requestNumberText = requestNumberFilter.trim().toLowerCase()
+  const visibleRequests = requests.filter((request) =>
+    (!statusFilter || request.status === statusFilter) &&
+    (!requestNumberText || request.requestNumber.toLowerCase().includes(requestNumberText)))
+  const filtersActive = !!(fromDate || toDate || requestNumberFilter || statusFilter)
+
+  function clearFilters() {
+    setFromDate('')
+    setToDate('')
+    setRequestNumberFilter('')
+    setStatusFilter('')
+  }
+
+  // Purchase orders are listed on their own screen; here they only drive the Action column.
   async function refreshPurchaseOrders() {
     if (!canReadPurchaseOrders) return
-    setPurchaseOrdersLoading(true)
-    setPurchaseOrdersError('')
     try {
       const [orders, supplierItems] = await Promise.all([
         api.listPurchaseOrders(session.accessToken),
@@ -206,18 +244,15 @@ export function MaterialRequestWorkspace({
       setPurchaseOrders(orders)
       setSuppliers(supplierItems)
     } catch (reason) {
-      setPurchaseOrdersError(reason instanceof ApiError
+      setListError(reason instanceof ApiError
         ? reason.message
-        : 'Could not load purchase orders.')
-    } finally {
-      setPurchaseOrdersLoading(false)
+        : 'Could not load purchase orders for the Action column.')
     }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
-    setCreated(null)
 
     const duplicateProducts = new Set(lines.map((line) => line.productId)).size !== lines.length
     if (duplicateProducts) {
@@ -240,7 +275,12 @@ export function MaterialRequestWorkspace({
           unitOfMeasure: line.unitOfMeasure,
         })),
       })
-      setCreated(result)
+      setCreateOpen(false)
+      setPurpose('')
+      setLines(catalogItems.length > 0 ? [createLine(catalogItems)] : [])
+      setWorkflowMessage(
+        `${result.requestNumber} was submitted to the Purchase Department. Current status: ${result.status}.`,
+      )
       await refreshRequests()
     } catch (reason) {
       setError(reason instanceof ApiError
@@ -273,29 +313,40 @@ export function MaterialRequestWorkspace({
       <header className="workspace-title">
         <div>
           <button className="workspace-back" type="button" onClick={onBack}>← Dashboard</button>
-          <h1 id="material-request-title">
-            {canCreateRequest ? 'GRD M. Requisition' : 'Material R'}
-          </h1>
+          <h1 id="material-request-title"><ScreenName id={SCREEN.purchaseRequisition} /></h1>
           <p>
             {canCreateRequest
               ? 'Raise a plant requirement for review by the Purchase Department.'
               : 'Review plant and branch requirements sent to the Purchase Department.'}
           </p>
         </div>
-        <span className="workspace-status">
-          <i /> {canCreateRequest ? 'New request' : 'Purchase review'}
-        </span>
+        {canCreateRequest ? (
+          <button className="workspace-create-button" type="button" onClick={openCreate}>
+            + New requisition
+          </button>
+        ) : (
+          <span className="workspace-status"><i /> Purchase review</span>
+        )}
       </header>
 
-      {canCreateRequest && (
-      <form className="requisition-card" onSubmit={handleSubmit}>
-        <div className="requisition-card__heading">
-          <div>
-            <span className="eyebrow">Request details</span>
-            <h2>Plant requirement</h2>
-          </div>
-          <span>Required fields are marked *</span>
+      {canCreateRequest && createOpen && (
+      <div className="drawer-backdrop" role="presentation" onMouseDown={closeCreate}>
+      <aside
+        className="user-drawer requisition-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="requisition-drawer-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+      <header className="drawer-header">
+        <div>
+          <span className="eyebrow">Request details</span>
+          <h2 id="requisition-drawer-title"><ScreenName id={SCREEN.purchaseRequisition} /></h2>
+          <p>Required fields are marked *</p>
         </div>
+        <button className="close-button" type="button" onClick={closeCreate} aria-label="Close">×</button>
+      </header>
+      <form className="requisition-form" onSubmit={handleSubmit}>
 
         <div className="requisition-routing-grid">
           <div className="read-only-field">
@@ -321,7 +372,6 @@ export function MaterialRequestWorkspace({
             value={purpose}
             onChange={(event) => {
               setPurpose(event.target.value)
-              setCreated(null)
             }}
             maxLength={500}
             placeholder="Example: Packing bags required for September production"
@@ -413,12 +463,6 @@ export function MaterialRequestWorkspace({
         </div>
 
         {error && <div className="form-alert requisition-message" role="alert">{error}</div>}
-        {created && (
-          <div className="success-alert requisition-message" role="status">
-            <strong>{created.requestNumber}</strong> was submitted to the Purchase Department.
-            Current status: <strong>{created.status}</strong>.
-          </div>
-        )}
 
         <div className="requisition-actions">
           <button className="secondary-button" type="button" onClick={resetForm}>Clear</button>
@@ -427,13 +471,43 @@ export function MaterialRequestWorkspace({
           </button>
         </div>
       </form>
+      </aside>
+      </div>
       )}
+
+      <div className="list-filters" role="search" aria-label="Requisition filters">
+        <DateRangeSearch fromDate={fromDate} toDate={toDate} onSearch={applyDates} busy={listLoading} />
+        <label className="list-filters__search">
+          <span>Requisition no.</span>
+          <input
+            type="search"
+            value={requestNumberFilter}
+            onChange={(event) => setRequestNumberFilter(event.target.value)}
+            placeholder="MR-…"
+          />
+        </label>
+        <label>
+          <span>Status</span>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">All statuses</option>
+            {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+        </label>
+        <div className="list-filters__actions">
+          <button type="button" className="workspace-refresh" onClick={clearFilters} disabled={!filtersActive}>
+            Clear filters
+          </button>
+        </div>
+      </div>
 
       <section className="requisition-list-card" aria-labelledby="requisition-list-title">
         <div className="requisition-list-heading">
           <div>
             <strong id="requisition-list-title">Requisition list</strong>
-            <span>Track approval, purchase order, and material dispatch.</span>
+            <span>
+              {visibleRequests.length} of {requests.length} requisition{requests.length === 1 ? '' : 's'}
+              {' · '}Track approval, purchase order, and material dispatch.
+            </span>
           </div>
           <button type="button" onClick={refreshRequests} disabled={listLoading}>
             {listLoading ? 'Refreshing…' : '↻ Refresh'}
@@ -446,11 +520,13 @@ export function MaterialRequestWorkspace({
         )}
         {listLoading && requests.length === 0 ? (
           <div className="requisition-list-empty"><span className="spinner spinner--dark" /> Loading requisitions…</div>
-        ) : requests.length === 0 ? (
+        ) : visibleRequests.length === 0 ? (
           <div className="requisition-list-empty">
-            {canCreateRequest
-              ? 'No requisitions have been submitted from this location.'
-              : 'No requisitions are available in your organization scope.'}
+            {filtersActive
+              ? 'No requisitions match these filters.'
+              : canCreateRequest
+                ? 'No requisitions have been submitted from this location.'
+                : 'No requisitions are available in your organization scope.'}
           </div>
         ) : (
           <div className="requisition-table-scroll">
@@ -467,7 +543,7 @@ export function MaterialRequestWorkspace({
                 </tr>
               </thead>
               <tbody>
-                {requests.map((request) => {
+                {visibleRequests.map((request) => {
                   const linkedPurchaseOrder = request.purchaseOrderId
                     ? purchaseOrders.find((order) => order.id === request.purchaseOrderId)
                     : undefined
@@ -561,101 +637,6 @@ export function MaterialRequestWorkspace({
           </div>
         )}
       </section>
-
-      {canReadPurchaseOrders && (
-        <section className="requisition-list-card purchase-order-list-card" aria-labelledby="purchase-order-list-title">
-          <div className="requisition-list-heading">
-            <div>
-              <strong id="purchase-order-list-title">Purchase order list</strong>
-              <span>Review supplier, ordered quantity, negotiated rate, amount, and dispatch state.</span>
-            </div>
-            <button type="button" onClick={refreshPurchaseOrders} disabled={purchaseOrdersLoading}>
-              {purchaseOrdersLoading ? 'Refreshing…' : '↻ Refresh'}
-            </button>
-          </div>
-
-          {purchaseOrdersError && <div className="form-alert requisition-list-alert" role="alert">{purchaseOrdersError}</div>}
-          {purchaseOrdersLoading && purchaseOrders.length === 0 ? (
-            <div className="requisition-list-empty"><span className="spinner spinner--dark" /> Loading purchase orders…</div>
-          ) : purchaseOrders.length === 0 ? (
-            <div className="requisition-list-empty">No purchase orders have been created yet.</div>
-          ) : (
-            <div className="requisition-table-scroll">
-              <table className="requisition-table purchase-order-table">
-                <thead>
-                  <tr>
-                    <th>Purchase order</th>
-                    <th>Supplier</th>
-                    <th>Items and rates</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                    <th>Issued</th>
-                    {canRecordDispatch && <th>Action</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {purchaseOrders.map((order) => {
-                    const supplier = suppliers.find((item) => item.id === order.supplierId)
-                    return (
-                      <tr key={order.id}>
-                        <td>
-                          <strong>{order.purchaseOrderNumber}</strong>
-                          <small>Requisition {order.materialRequestId.slice(0, 8)}…</small>
-                        </td>
-                        <td>
-                          <strong>{supplier?.displayName ?? 'Supplier'}</strong>
-                          <small>{supplier?.code ?? order.supplierId}</small>
-                        </td>
-                        <td className="po-rate-lines">
-                          {order.items.map((item) => {
-                            const catalogItem = catalogItems.find((entry) => entry.id === item.productId)
-                            const lineAmount = item.lineAmount ?? item.quantity * item.unitPrice
-                            return (
-                              <div key={item.productId}>
-                                <strong>{catalogItem?.name ?? item.productId}</strong>
-                                <small>
-                                  {item.quantity.toLocaleString('en-IN')} {item.unitOfMeasure}
-                                  {' × '}{order.currency} {item.unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                  {' = '}{order.currency} {lineAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </small>
-                              </div>
-                            )
-                          })}
-                        </td>
-                        <td className="po-total-cell">
-                          <strong>{order.currency} {(order.totalAmount ?? order.items.reduce(
-                            (total, item) => total + item.quantity * item.unitPrice,
-                            0,
-                          )).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
-                        </td>
-                        <td><span className={`tracking-status tracking-status--${order.status.toLowerCase()}`}>{order.status}</span></td>
-                        <td>{new Date(order.issuedOnUtc).toLocaleDateString('en-IN')}</td>
-                        {canRecordDispatch && (
-                          <td className="requisition-action-cell">
-                            {order.status === 'Issued' ? (
-                              <button
-                                className="table-action-button table-action-button--primary"
-                                type="button"
-                                onClick={() => setDispatchOrder(order)}
-                              >
-                                Record dispatch
-                              </button>
-                            ) : (
-                              <span className="table-action-complete">
-                                {order.status === 'Received' ? 'Received' : 'Dispatch recorded'}
-                              </span>
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      )}
 
       {purchaseOrderRequestId && (
         <PurchaseOrderPanel

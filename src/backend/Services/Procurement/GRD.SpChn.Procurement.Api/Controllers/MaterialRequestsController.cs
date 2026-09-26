@@ -14,14 +14,27 @@ public sealed class MaterialRequestsController(ISender sender) : ControllerBase
 {
     [Authorize(Policy = ErpPolicies.MaterialRequestRead)]
     [HttpGet]
-    public async Task<IActionResult> List(CancellationToken cancellationToken)
+    public async Task<IActionResult> List(
+        [FromQuery] DateTime? fromUtc,
+        [FromQuery] DateTime? toUtc,
+        CancellationToken cancellationToken)
     {
+        if (fromUtc is not null && toUtc is not null && toUtc <= fromUtc)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Procurement.InvalidDateRange",
+                detail: "The To date must be after the From date.");
+        }
+
         var includeAllOrganizationUnits = User.HasClaim(
             ErpClaimTypes.Permission,
             ErpPermissions.MaterialRequestApprove);
         var requests = await sender.Send(new ListMaterialRequestsQuery(
             User.GetRequiredOrganizationUnitId(),
-            includeAllOrganizationUnits), cancellationToken);
+            includeAllOrganizationUnits,
+            fromUtc?.ToUniversalTime(),
+            toUtc?.ToUniversalTime()), cancellationToken);
         return Ok(requests);
     }
 

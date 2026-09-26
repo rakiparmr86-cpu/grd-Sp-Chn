@@ -1,6 +1,7 @@
 using GRD.SpChn.Inventory.Application.Stock;
 using GRD.SpChn.Inventory.Application.Stock.GetStock;
 using GRD.SpChn.Inventory.Application.Stock.GetLocationStock;
+using GRD.SpChn.Inventory.Application.Stock.GetStockLedger;
 using GRD.SpChn.Inventory.Application.Stock.SetStock;
 using GRD.SpChn.Security;
 using GRD.SpChn.SharedKernel;
@@ -51,8 +52,47 @@ public sealed class StockController(ISender sender) : ControllerBase
         return result.IsSuccess ? Ok(result.Value) : ToProblem(result);
     }
 
+    // A user may read their own location or any location below it; the token's unit is the root.
+    [Authorize(Policy = ErpPolicies.InventoryStockRead)]
+    [HttpGet("ledger")]
+    [ProducesResponseType<StockLedgerResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetLedger(
+        [FromQuery] DateTime fromUtc,
+        [FromQuery] DateTime toUtc,
+        [FromQuery] Guid? locationId,
+        [FromQuery] Guid? productId,
+        CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new GetStockLedgerQuery(
+                User.GetRequiredOrganizationUnitId(),
+                locationId,
+                productId,
+                DateTime.SpecifyKind(fromUtc.ToUniversalTime(), DateTimeKind.Utc),
+                DateTime.SpecifyKind(toUtc.ToUniversalTime(), DateTimeKind.Utc)),
+            cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : ToProblem(result);
+    }
+
+    [Authorize(Policy = ErpPolicies.InventoryStockRead)]
+    [HttpGet("ledger/locations")]
+    public async Task<IActionResult> GetLedgerLocations(CancellationToken cancellationToken) =>
+        Ok(await sender.Send(
+            new GetStockLedgerLocationsQuery(User.GetRequiredOrganizationUnitId()),
+            cancellationToken));
+
     private IActionResult ToProblem<T>(Result<T> result)
     {
+        if (result.FirstError.Code == StockLocationScope.OutOfScopeCode)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: result.FirstError.Code,
+                detail: result.FirstError.Description);
+        }
+
         if (result.Errors.All(error => error.Type == ErrorType.Validation))
         {
             var errors = result.Errors

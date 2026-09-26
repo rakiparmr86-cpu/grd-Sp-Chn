@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<ILocationInventoryRepository>(provider =>
             (InventoryRepository)provider.GetRequiredService<IInventoryRepository>());
+        services.AddScoped<IStockLedgerReader, StockLedgerReader>();
         services.AddScoped<IOutboxWriter, InventoryOutboxWriter>();
         services.AddScoped<IInboxStore, InventoryInboxStore>();
         services.AddRabbitMqConsumer<

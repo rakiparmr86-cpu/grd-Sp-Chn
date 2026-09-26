@@ -3,10 +3,20 @@ import type { ReactNode } from 'react'
 import type { LoginResponse } from '../api'
 import { hasPermission } from '../auth'
 import { AccessProfilePermissionsPanel } from '../components/AccessProfilePermissionsPanel'
+import { AccountLedgerWorkspace } from '../components/AccountLedgerWorkspace'
 import { AccountingWorkspace } from '../components/AccountingWorkspace'
 import { Brand, GridIcon } from '../components/Brand'
 import { CreateUserPanel } from '../components/CreateUserPanel'
+import {
+  BalanceSheetWorkspace,
+  ProfitAndLossWorkspace,
+  TrialBalanceWorkspace,
+} from '../components/FinancialStatements'
 import { MaterialRequestWorkspace } from '../components/MaterialRequestWorkspace'
+import { PurchaseOrderWorkspace } from '../components/PurchaseOrderWorkspace'
+import { ScreenName } from '../components/ScreenName'
+import { StockLedgerWorkspace } from '../components/StockLedgerWorkspace'
+import { SCREEN } from '../config/screens'
 
 interface DashboardPageProps {
   session: LoginResponse
@@ -19,7 +29,22 @@ type MenuAction =
   | 'create-material-request'
   | 'view-material-requests'
   | 'accounting'
-type DashboardView = 'dashboard' | 'material-request' | 'accounting'
+  | 'stock-ledger'
+  | 'purchase-orders'
+  | 'account-ledger'
+  | 'trial-balance'
+  | 'profit-and-loss'
+  | 'balance-sheet'
+type DashboardView =
+  | 'dashboard'
+  | 'material-request'
+  | 'purchase-order'
+  | 'accounting'
+  | 'stock-ledger'
+  | 'account-ledger'
+  | 'trial-balance'
+  | 'profit-and-loss'
+  | 'balance-sheet'
 type MenuIconName = 'identity' | 'organization' | 'procurement' | 'inventory' | 'warehouse' | 'accounting'
 
 interface MoreMenuItem {
@@ -66,9 +91,27 @@ const moreMenuGroups: MoreMenuGroup[] = [
       },
       {
         permission: 'accounting.journal.read',
-        label: 'Stock and party ledger',
-        description: 'Review immutable debit and credit journal entries.',
-        action: 'accounting',
+        label: 'Account and party ledger',
+        description: 'Every ledger with date, particulars, debit, credit and balance.',
+        action: 'account-ledger',
+      },
+      {
+        permission: 'accounting.journal.read',
+        label: 'Trial balance',
+        description: 'Debit and credit totals of every account for a period.',
+        action: 'trial-balance',
+      },
+      {
+        permission: 'accounting.journal.read',
+        label: 'Profit and loss',
+        description: 'Income, expenses and net profit or loss for a period.',
+        action: 'profit-and-loss',
+      },
+      {
+        permission: 'accounting.journal.read',
+        label: 'Balance sheet',
+        description: 'Assets against liabilities and capital as at a date.',
+        action: 'balance-sheet',
       },
     ],
   },
@@ -138,6 +181,7 @@ const moreMenuGroups: MoreMenuGroup[] = [
         permission: 'procurement.purchase-order.read',
         label: 'View purchase orders',
         description: 'Track purchase orders in your organization scope.',
+        action: 'purchase-orders',
       },
     ],
   },
@@ -149,6 +193,12 @@ const moreMenuGroups: MoreMenuGroup[] = [
         permission: 'inventory.stock.read',
         label: 'View location stock',
         description: 'Check on-hand stock for authorized locations.',
+      },
+      {
+        permission: 'inventory.stock.read',
+        label: 'Stock ledger',
+        description: 'Opening, receipts, issues and running balance by material.',
+        action: 'stock-ledger',
       },
     ],
   },
@@ -241,6 +291,7 @@ export function DashboardPage({ session, onSignOut }: DashboardPageProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [activeView, setActiveView] = useState<DashboardView>('dashboard')
+  const [createRequestSignal, setCreateRequestSignal] = useState(0)
   const [now, setNow] = useState(() => new Date())
   const moreMenuRef = useRef<HTMLDivElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
@@ -303,7 +354,14 @@ export function DashboardPage({ session, onSignOut }: DashboardPageProps) {
     if (action === 'create-material-request' || action === 'view-material-requests') {
       setActiveView('material-request')
     }
+    if (action === 'create-material-request') setCreateRequestSignal((current) => current + 1)
     if (action === 'accounting') setActiveView('accounting')
+    if (action === 'stock-ledger') setActiveView('stock-ledger')
+    if (action === 'purchase-orders') setActiveView('purchase-order')
+    if (action === 'account-ledger') setActiveView('account-ledger')
+    if (action === 'trial-balance') setActiveView('trial-balance')
+    if (action === 'profit-and-loss') setActiveView('profit-and-loss')
+    if (action === 'balance-sheet') setActiveView('balance-sheet')
   }
 
   return (
@@ -368,7 +426,7 @@ export function DashboardPage({ session, onSignOut }: DashboardPageProps) {
                         <div className="menu-group__items">
                           {group.items.map((item) => (
                             <button
-                              key={item.permission}
+                              key={`${item.permission}:${item.label}`}
                               className={item.action ? 'menu-action' : 'menu-action is-planned'}
                               type="button"
                               role="menuitem"
@@ -450,9 +508,31 @@ export function DashboardPage({ session, onSignOut }: DashboardPageProps) {
 
       <main className="dashboard-canvas" aria-label="Dashboard content">
         {activeView === 'dashboard' ? (
-          <h1 className="sr-only">Dashboard</h1>
+          <div className="dashboard-home"><h1><ScreenName id={SCREEN.dashboard} /></h1></div>
         ) : activeView === 'material-request' ? (
           <MaterialRequestWorkspace
+            session={session}
+            createRequestSignal={createRequestSignal}
+            onBack={() => setActiveView('dashboard')}
+          />
+        ) : activeView === 'purchase-order' ? (
+          <PurchaseOrderWorkspace
+            session={session}
+            onBack={() => setActiveView('dashboard')}
+          />
+        ) : activeView === 'trial-balance' ? (
+          <TrialBalanceWorkspace session={session} onBack={() => setActiveView('dashboard')} />
+        ) : activeView === 'profit-and-loss' ? (
+          <ProfitAndLossWorkspace session={session} onBack={() => setActiveView('dashboard')} />
+        ) : activeView === 'balance-sheet' ? (
+          <BalanceSheetWorkspace session={session} onBack={() => setActiveView('dashboard')} />
+        ) : activeView === 'account-ledger' ? (
+          <AccountLedgerWorkspace
+            session={session}
+            onBack={() => setActiveView('dashboard')}
+          />
+        ) : activeView === 'stock-ledger' ? (
+          <StockLedgerWorkspace
             session={session}
             onBack={() => setActiveView('dashboard')}
           />

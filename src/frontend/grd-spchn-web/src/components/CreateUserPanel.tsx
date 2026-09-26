@@ -6,6 +6,8 @@ import {
   type CreatedUser,
   type OrganizationUnit,
 } from '../api'
+import { ScreenName } from './ScreenName'
+import { SCREEN } from '../config/screens'
 
 interface CreateUserPanelProps {
   accessToken: string
@@ -87,7 +89,7 @@ export function CreateUserPanel({ accessToken, onClose }: CreateUserPanelProps) 
         <header className="drawer-header">
           <div>
             <span className="eyebrow">Identity & access</span>
-            <h2 id="create-user-title">Create a user</h2>
+            <h2 id="create-user-title"><ScreenName id={SCREEN.userManagement} /></h2>
             <p>Assign a controlled job profile and organization scope.</p>
           </div>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close">×</button>

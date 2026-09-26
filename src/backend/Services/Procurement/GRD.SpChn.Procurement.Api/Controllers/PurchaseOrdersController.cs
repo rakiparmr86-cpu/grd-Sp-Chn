@@ -12,14 +12,27 @@ public sealed class PurchaseOrdersController(ISender sender) : ControllerBase
 {
     [Authorize(Policy = ErpPolicies.PurchaseOrderRead)]
     [HttpGet]
-    public async Task<IActionResult> List(CancellationToken cancellationToken)
+    public async Task<IActionResult> List(
+        [FromQuery] DateTime? fromUtc,
+        [FromQuery] DateTime? toUtc,
+        CancellationToken cancellationToken)
     {
+        if (fromUtc is not null && toUtc is not null && toUtc <= fromUtc)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Procurement.InvalidDateRange",
+                detail: "The To date must be after the From date.");
+        }
+
         var includeAllOrganizationUnits = User.HasClaim(
             ErpClaimTypes.Permission,
             ErpPermissions.PurchaseOrderCreate);
         var orders = await sender.Send(new ListPurchaseOrdersQuery(
             User.GetRequiredOrganizationUnitId(),
-            includeAllOrganizationUnits), cancellationToken);
+            includeAllOrganizationUnits,
+            fromUtc?.ToUniversalTime(),
+            toUtc?.ToUniversalTime()), cancellationToken);
         return Ok(orders);
     }
 

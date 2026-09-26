@@ -4,6 +4,8 @@ import {
   ApiError,
   type PurchaseOrder,
 } from '../api'
+import { ScreenName } from './ScreenName'
+import { SCREEN } from '../config/screens'
 
 interface VendorDispatchPanelProps {
   accessToken: string
@@ -74,7 +76,7 @@ export function VendorDispatchPanel({
         <header className="drawer-header">
           <div>
             <span className="eyebrow">Procurement</span>
-            <h2 id="vendor-dispatch-title">Record vendor dispatch.</h2>
+            <h2 id="vendor-dispatch-title"><ScreenName id={SCREEN.vendorDispatch} /></h2>
             <p>The supplier needs no ERP login. Record the dispatch advice received by Purchase.</p>
           </div>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close">×</button>

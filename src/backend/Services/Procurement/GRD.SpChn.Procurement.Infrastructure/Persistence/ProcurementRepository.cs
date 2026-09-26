@@ -54,6 +54,8 @@ internal sealed class ProcurementRepository(
     public async Task<IReadOnlyCollection<MaterialRequestListItemResponse>> ListMaterialRequestsAsync(
         Guid organizationUnitId,
         bool includeAllOrganizationUnits,
+        DateTime? createdFromUtc,
+        DateTime? createdToUtc,
         CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
@@ -77,8 +79,10 @@ internal sealed class ProcurementRepository(
                    ON item.material_request_id = request.id
             LEFT JOIN procurement_purchase_orders purchase_order
                    ON purchase_order.id = request.purchase_order_id
-            WHERE @IncludeAllOrganizationUnits = TRUE
-               OR request.requesting_organization_unit_id = @OrganizationUnitId
+            WHERE (@IncludeAllOrganizationUnits = TRUE
+                   OR request.requesting_organization_unit_id = @OrganizationUnitId)
+              AND (@CreatedFromUtc IS NULL OR request.created_on_utc >= @CreatedFromUtc)
+              AND (@CreatedToUtc IS NULL OR request.created_on_utc < @CreatedToUtc)
             GROUP BY request.id, request.request_number, request.purpose, request.status,
                      request.requested_by_user_id, request.created_on_utc,
                      purchase_order.id, purchase_order.purchase_order_number,
@@ -88,7 +92,9 @@ internal sealed class ProcurementRepository(
             new
             {
                 OrganizationUnitId = organizationUnitId,
-                IncludeAllOrganizationUnits = includeAllOrganizationUnits
+                IncludeAllOrganizationUnits = includeAllOrganizationUnits,
+                CreatedFromUtc = createdFromUtc,
+                CreatedToUtc = createdToUtc
             },
             cancellationToken: cancellationToken));
         return rows
@@ -180,20 +186,26 @@ internal sealed class ProcurementRepository(
     public async Task<IReadOnlyCollection<PurchaseOrder>> ListPurchaseOrdersAsync(
         Guid organizationUnitId,
         bool includeAllOrganizationUnits,
+        DateTime? issuedFromUtc,
+        DateTime? issuedToUtc,
         CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         var rows = (await connection.QueryAsync<PurchaseOrderRow>(new CommandDefinition(
             PurchaseOrderSelect +
             """
-             WHERE @IncludeAllOrganizationUnits = TRUE
-                OR destination_organization_unit_id = @OrganizationUnitId
+             WHERE (@IncludeAllOrganizationUnits = TRUE
+                    OR destination_organization_unit_id = @OrganizationUnitId)
+               AND (@IssuedFromUtc IS NULL OR issued_on_utc >= @IssuedFromUtc)
+               AND (@IssuedToUtc IS NULL OR issued_on_utc < @IssuedToUtc)
              ORDER BY issued_on_utc DESC, id DESC;
             """,
             new
             {
                 OrganizationUnitId = organizationUnitId,
-                IncludeAllOrganizationUnits = includeAllOrganizationUnits
+                IncludeAllOrganizationUnits = includeAllOrganizationUnits,
+                IssuedFromUtc = issuedFromUtc,
+                IssuedToUtc = issuedToUtc
             },
             cancellationToken: cancellationToken))).ToArray();
         if (rows.Length == 0) return [];

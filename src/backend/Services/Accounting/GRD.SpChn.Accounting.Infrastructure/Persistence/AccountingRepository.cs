@@ -479,20 +479,22 @@ internal sealed class AccountingRepository(AccountingUnitOfWork unitOfWork)
     public Task AddPaymentAsync(
         Guid paymentId,
         VendorPayable payable,
+        Guid paymentBatchId,
         CancellationToken cancellationToken = default) =>
         unitOfWork.Connection.ExecuteAsync(new CommandDefinition(
             """
             INSERT INTO accounting_payments
-                (id, payable_id, amount, currency, bank_reference,
+                (id, payable_id, payment_batch_id, amount, currency, bank_reference,
                  paid_by_user_id, paid_on_utc, recorded_on_utc)
             VALUES
-                (@Id, @PayableId, @Amount, @Currency, @BankReference,
+                (@Id, @PayableId, @PaymentBatchId, @Amount, @Currency, @BankReference,
                  @PaidByUserId, @PaidOnUtc, @RecordedOnUtc);
             """,
             new
             {
                 Id = paymentId,
                 PayableId = payable.Id,
+                PaymentBatchId = paymentBatchId,
                 Amount = payable.TotalAmount,
                 payable.Currency,
                 payable.BankReference,
@@ -502,6 +504,146 @@ internal sealed class AccountingRepository(AccountingUnitOfWork unitOfWork)
             },
             unitOfWork.Transaction,
             cancellationToken: cancellationToken));
+
+    public Task<bool> BankReferenceExistsAsync(
+        string bankReference,
+        CancellationToken cancellationToken = default) =>
+        unitOfWork.Connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+            """
+            SELECT EXISTS(SELECT 1 FROM accounting_payment_batches WHERE bank_reference = @BankReference)
+                OR EXISTS(SELECT 1 FROM accounting_payments WHERE bank_reference = @BankReference);
+            """,
+            new { BankReference = bankReference },
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken));
+
+    public Task AddPaymentBatchAsync(
+        Guid id,
+        string batchNumber,
+        Guid supplierId,
+        string currency,
+        decimal totalAmount,
+        int payableCount,
+        string bankReference,
+        Guid paidByUserId,
+        DateTime paidOnUtc,
+        CancellationToken cancellationToken = default) =>
+        unitOfWork.Connection.ExecuteAsync(new CommandDefinition(
+            """
+            INSERT INTO accounting_payment_batches
+                (id, batch_number, supplier_id, currency, total_amount, payable_count,
+                 bank_reference, paid_by_user_id, paid_on_utc, recorded_on_utc)
+            VALUES
+                (@Id, @BatchNumber, @SupplierId, @Currency, @TotalAmount, @PayableCount,
+                 @BankReference, @PaidByUserId, @PaidOnUtc, @RecordedOnUtc);
+            """,
+            new
+            {
+                Id = id,
+                BatchNumber = batchNumber,
+                SupplierId = supplierId,
+                Currency = currency,
+                TotalAmount = totalAmount,
+                PayableCount = payableCount,
+                BankReference = bankReference,
+                PaidByUserId = paidByUserId,
+                PaidOnUtc = paidOnUtc,
+                RecordedOnUtc = DateTime.UtcNow
+            },
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken));
+
+    public async Task<PayableDetailResponse?> GetPayableDetailAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var payable = await unitOfWork.Connection.QuerySingleOrDefaultAsync<PayableResponse>(new CommandDefinition(
+            $"""
+            SELECT {PayableColumns}
+            FROM accounting_vendor_payables
+            WHERE id = @Id;
+            """,
+            new { Id = id },
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken));
+        if (payable is null) return null;
+
+        var header = await unitOfWork.Connection.QuerySingleOrDefaultAsync<PayableDetailHeaderRow>(new CommandDefinition(
+            """
+            SELECT po.purchase_order_number AS PurchaseOrderNumber,
+                   receipt.goods_receipt_number AS GoodsReceiptNumber,
+                   receipt.accepted_on_utc AS AcceptedOnUtc
+            FROM accounting_vendor_payables payable
+            LEFT JOIN accounting_purchase_orders po ON po.purchase_order_id = payable.purchase_order_id
+            LEFT JOIN accounting_accepted_receipts receipt ON receipt.goods_receipt_id = payable.goods_receipt_id
+            WHERE payable.id = @Id;
+            """,
+            new { Id = id },
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken));
+
+        var lines = (await unitOfWork.Connection.QueryAsync<PayableDetailLine>(new CommandDefinition(
+            """
+            SELECT line.product_id AS ProductId,
+                   line.unit_of_measure AS UnitOfMeasure,
+                   po_item.ordered_quantity AS PurchaseOrderQuantity,
+                   accepted.accepted_quantity AS AcceptedQuantity,
+                   line.quantity AS InvoicedQuantity,
+                   po_item.unit_price AS PurchaseOrderUnitPrice,
+                   line.unit_price AS InvoiceUnitPrice,
+                   line.line_amount AS LineAmount
+            FROM accounting_vendor_invoice_lines line
+            INNER JOIN accounting_vendor_payables payable ON payable.id = line.payable_id
+            LEFT JOIN accounting_purchase_order_items po_item
+                   ON po_item.purchase_order_id = payable.purchase_order_id
+                  AND po_item.product_id = line.product_id
+            LEFT JOIN accounting_accepted_receipt_items accepted
+                   ON accepted.goods_receipt_id = payable.goods_receipt_id
+                  AND accepted.product_id = line.product_id
+            WHERE line.payable_id = @Id
+            ORDER BY line.product_id;
+            """,
+            new { Id = id },
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken))).AsList();
+
+        var batch = await unitOfWork.Connection.QuerySingleOrDefaultAsync<PaymentBatchSummary>(new CommandDefinition(
+            """
+            SELECT batch.id AS Id, batch.batch_number AS BatchNumber,
+                   batch.bank_reference AS BankReference, batch.total_amount AS TotalAmount,
+                   batch.payable_count AS PayableCount, batch.paid_on_utc AS PaidOnUtc
+            FROM accounting_payments payment
+            INNER JOIN accounting_payment_batches batch ON batch.id = payment.payment_batch_id
+            WHERE payment.payable_id = @Id;
+            """,
+            new { Id = id },
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken));
+
+        var journals = (await unitOfWork.Connection.QueryAsync<JournalEntryResponse>(new CommandDefinition(
+            $"""
+            {JournalSelect}
+            WHERE (journal.source_type = 'GoodsReceipt' AND journal.source_id = @GoodsReceiptId)
+               OR (journal.source_type = 'VendorPayable' AND journal.source_id = @Id)
+               OR (journal.source_type = 'AccountingPaymentBatch' AND journal.source_id = @BatchId)
+               OR (journal.source_type = 'AccountingPayment' AND journal.source_id IN
+                    (SELECT payment.id FROM accounting_payments payment WHERE payment.payable_id = @Id))
+            {JournalGroupBy}
+            ORDER BY journal.posted_on_utc;
+            """,
+            new { Id = id, payable.GoodsReceiptId, BatchId = batch?.Id },
+            unitOfWork.Transaction,
+            cancellationToken: cancellationToken))).AsList();
+
+        return new PayableDetailResponse(
+            payable,
+            header?.PurchaseOrderNumber,
+            header?.GoodsReceiptNumber,
+            header?.AcceptedOnUtc,
+            lines,
+            batch,
+            journals);
+    }
 
     public async Task AddJournalEntryAsync(
         JournalEntry entry,
@@ -546,18 +688,8 @@ internal sealed class AccountingRepository(AccountingUnitOfWork unitOfWork)
     public async Task<IReadOnlyCollection<PayableResponse>> ListPayablesAsync(
         CancellationToken cancellationToken = default) =>
         (await unitOfWork.Connection.QueryAsync<PayableResponse>(new CommandDefinition(
-            """
-            SELECT
-                id AS Id, invoice_number AS InvoiceNumber,
-                supplier_invoice_number AS SupplierInvoiceNumber,
-                purchase_order_id AS PurchaseOrderId, goods_receipt_id AS GoodsReceiptId,
-                supplier_id AS SupplierId, currency AS Currency, subtotal AS Subtotal,
-                tax_amount AS TaxAmount, total_amount AS TotalAmount, status AS Status,
-                created_by_user_id AS CreatedByUserId, approved_by_user_id AS ApprovedByUserId,
-                paid_by_user_id AS PaidByUserId, bank_reference AS BankReference,
-                invoice_date_utc AS InvoiceDateUtc, due_date_utc AS DueDateUtc,
-                created_on_utc AS CreatedOnUtc, approved_on_utc AS ApprovedOnUtc,
-                paid_on_utc AS PaidOnUtc
+            $"""
+            SELECT {PayableColumns}
             FROM accounting_vendor_payables
             ORDER BY created_on_utc DESC;
             """,
@@ -567,23 +699,51 @@ internal sealed class AccountingRepository(AccountingUnitOfWork unitOfWork)
     public async Task<IReadOnlyCollection<JournalEntryResponse>> ListJournalEntriesAsync(
         CancellationToken cancellationToken = default) =>
         (await unitOfWork.Connection.QueryAsync<JournalEntryResponse>(new CommandDefinition(
-            """
-            SELECT
-                journal.id AS Id, journal.entry_number AS EntryNumber,
-                journal.entry_type AS EntryType, journal.source_type AS SourceType,
-                journal.source_id AS SourceId, journal.currency AS Currency,
-                SUM(line.debit_amount) AS DebitTotal,
-                SUM(line.credit_amount) AS CreditTotal,
-                journal.description AS Description, journal.posted_on_utc AS PostedOnUtc
-            FROM accounting_journal_entries journal
-            INNER JOIN accounting_journal_lines line ON line.journal_entry_id = journal.id
-            GROUP BY journal.id, journal.entry_number, journal.entry_type,
-                     journal.source_type, journal.source_id, journal.currency,
-                     journal.description, journal.posted_on_utc
+            $"""
+            {JournalSelect}
+            {JournalGroupBy}
             ORDER BY journal.posted_on_utc DESC;
             """,
             transaction: unitOfWork.Transaction,
             cancellationToken: cancellationToken))).AsList();
+
+    private const string PayableColumns = """
+        id AS Id, invoice_number AS InvoiceNumber,
+        supplier_invoice_number AS SupplierInvoiceNumber,
+        purchase_order_id AS PurchaseOrderId, goods_receipt_id AS GoodsReceiptId,
+        supplier_id AS SupplierId, currency AS Currency, subtotal AS Subtotal,
+        tax_amount AS TaxAmount, total_amount AS TotalAmount, status AS Status,
+        created_by_user_id AS CreatedByUserId, approved_by_user_id AS ApprovedByUserId,
+        paid_by_user_id AS PaidByUserId, bank_reference AS BankReference,
+        invoice_date_utc AS InvoiceDateUtc, due_date_utc AS DueDateUtc,
+        created_on_utc AS CreatedOnUtc, approved_on_utc AS ApprovedOnUtc,
+        paid_on_utc AS PaidOnUtc
+        """;
+
+    private const string JournalSelect = """
+        SELECT
+            journal.id AS Id, journal.entry_number AS EntryNumber,
+            journal.entry_type AS EntryType, journal.source_type AS SourceType,
+            journal.source_id AS SourceId, journal.currency AS Currency,
+            SUM(line.debit_amount) AS DebitTotal,
+            SUM(line.credit_amount) AS CreditTotal,
+            journal.description AS Description, journal.posted_on_utc AS PostedOnUtc
+        FROM accounting_journal_entries journal
+        INNER JOIN accounting_journal_lines line ON line.journal_entry_id = journal.id
+        """;
+
+    private const string JournalGroupBy = """
+        GROUP BY journal.id, journal.entry_number, journal.entry_type,
+                 journal.source_type, journal.source_id, journal.currency,
+                 journal.description, journal.posted_on_utc
+        """;
+
+    private sealed class PayableDetailHeaderRow
+    {
+        public string? PurchaseOrderNumber { get; set; }
+        public string? GoodsReceiptNumber { get; set; }
+        public DateTime? AcceptedOnUtc { get; set; }
+    }
 
     private sealed class AccrualCandidateRow
     {

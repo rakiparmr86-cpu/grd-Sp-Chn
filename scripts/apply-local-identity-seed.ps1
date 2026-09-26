@@ -55,6 +55,9 @@ $migrationFiles = @(
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/010_quality_release_to_inventory.sql")
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/011_partial_goods_receipts.sql")
     (Join-Path $repositoryRoot "deploy/docker/mysql/init/012_accounting_payables.sql")
+    (Join-Path $repositoryRoot "deploy/docker/mysql/init/013_accounting_payment_batches.sql")
+    (Join-Path $repositoryRoot "deploy/docker/mysql/init/014_stock_ledger_access.sql")
+    (Join-Path $repositoryRoot "deploy/docker/mysql/init/015_accounting_vouchers.sql")
 )
 $composeArguments = @("compose")
 if (Test-Path -LiteralPath $dockerEnvironmentFile -PathType Leaf) {

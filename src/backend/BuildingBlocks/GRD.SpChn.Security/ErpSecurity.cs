@@ -55,6 +55,8 @@ public static class ErpPermissions
     public const string AccountingPayableApprove = "accounting.payable.approve";
     public const string AccountingPaymentRelease = "accounting.payment.release";
     public const string AccountingJournalRead = "accounting.journal.read";
+    public const string AccountingVoucherCreate = "accounting.voucher.create";
+    public const string AccountingAccountManage = "accounting.account.manage";
 }
 
 public static class ErpPolicies
@@ -83,6 +85,8 @@ public static class ErpPolicies
     public const string AccountingPayableApprove = nameof(AccountingPayableApprove);
     public const string AccountingPaymentRelease = nameof(AccountingPaymentRelease);
     public const string AccountingJournalRead = nameof(AccountingJournalRead);
+    public const string AccountingVoucherCreate = nameof(AccountingVoucherCreate);
+    public const string AccountingAccountManage = nameof(AccountingAccountManage);
 }
 
 public sealed class JwtOptions
@@ -236,6 +240,8 @@ public static class SecurityDependencyInjection
             AddPermissionPolicy(authorization, ErpPolicies.AccountingPayableApprove, ErpPermissions.AccountingPayableApprove);
             AddPermissionPolicy(authorization, ErpPolicies.AccountingPaymentRelease, ErpPermissions.AccountingPaymentRelease);
             AddPermissionPolicy(authorization, ErpPolicies.AccountingJournalRead, ErpPermissions.AccountingJournalRead);
+            AddPermissionPolicy(authorization, ErpPolicies.AccountingVoucherCreate, ErpPermissions.AccountingVoucherCreate);
+            AddPermissionPolicy(authorization, ErpPolicies.AccountingAccountManage, ErpPermissions.AccountingAccountManage);
         });
 
         return services;

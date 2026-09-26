@@ -5,6 +5,8 @@ import {
   type ManagedAccessProfile,
   type PermissionDefinition,
 } from '../api'
+import { ScreenName } from './ScreenName'
+import { SCREEN } from '../config/screens'
 
 interface AccessProfilePermissionsPanelProps {
   accessToken: string
@@ -116,7 +118,7 @@ export function AccessProfilePermissionsPanel({
         <header className="drawer-header">
           <div>
             <span className="eyebrow">Identity & access</span>
-            <h2 id="permission-panel-title">Manage profile permissions</h2>
+            <h2 id="permission-panel-title"><ScreenName id={SCREEN.permissionManagement} /></h2>
             <p>Add or remove backend-controlled access for each job profile.</p>
           </div>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close">×</button>

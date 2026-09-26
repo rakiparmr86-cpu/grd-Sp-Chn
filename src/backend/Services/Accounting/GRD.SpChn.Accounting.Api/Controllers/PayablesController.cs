@@ -21,6 +21,17 @@ public sealed class PayablesController(ISender sender) : ControllerBase
     public async Task<IActionResult> List(CancellationToken cancellationToken) =>
         Ok(await sender.Send(new ListPayablesQuery(), cancellationToken));
 
+    [Authorize(Policy = ErpPolicies.AccountingPayableRead)]
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetDetail(Guid id, CancellationToken cancellationToken)
+    {
+        var detail = await sender.Send(new GetPayableDetailQuery(id), cancellationToken);
+        return detail is null
+            ? Problem(statusCode: StatusCodes.Status404NotFound, title: "Accounting.PayableNotFound",
+                detail: $"Payable '{id}' was not found.")
+            : Ok(detail);
+    }
+
     [Authorize(Policy = ErpPolicies.AccountingInvoiceCreate)]
     [HttpPost("vendor-invoices")]
     public async Task<IActionResult> CreateInvoice(
@@ -44,40 +55,70 @@ public sealed class PayablesController(ISender sender) : ControllerBase
 
     [Authorize(Policy = ErpPolicies.AccountingPayableApprove)]
     [HttpPost("{id:guid}/approve")]
-    public async Task<IActionResult> Approve(Guid id, CancellationToken cancellationToken) =>
-        ToActionResult(await sender.Send(
-            new ApproveVendorPayableCommand(id, User.GetRequiredUserId()),
-            cancellationToken));
+    public async Task<IActionResult> Approve(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new ApproveVendorPayablesCommand([id], User.GetRequiredUserId()),
+            cancellationToken);
+        return result.IsSuccess ? Ok(result.Value.Single()) : ToProblem(result.FirstError);
+    }
+
+    [Authorize(Policy = ErpPolicies.AccountingPayableApprove)]
+    [HttpPost("batch-approvals")]
+    public async Task<IActionResult> ApproveBatch(
+        [FromBody] PayableBatchRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new ApproveVendorPayablesCommand(request.PayableIds ?? [], User.GetRequiredUserId()),
+            cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : ToProblem(result.FirstError);
+    }
 
     [Authorize(Policy = ErpPolicies.AccountingPaymentRelease)]
     [HttpPost("{id:guid}/payments")]
     public async Task<IActionResult> RecordPayment(
         Guid id,
         [FromBody] RecordVendorPaymentRequest request,
-        CancellationToken cancellationToken) =>
-        ToActionResult(await sender.Send(new RecordVendorPaymentCommand(
-            id,
+        CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new RecordVendorPaymentBatchCommand(
+            [id],
             User.GetRequiredUserId(),
             request.BankReference,
-            request.PaidOnUtc ?? DateTime.UtcNow), cancellationToken));
+            request.PaidOnUtc ?? DateTime.UtcNow), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value.Payables.Single()) : ToProblem(result.FirstError);
+    }
 
-    private ObjectResult ToActionResult(Result<PayableResponse> result, int successStatus = StatusCodes.Status200OK)
+    [Authorize(Policy = ErpPolicies.AccountingPaymentRelease)]
+    [HttpPost("payment-batches")]
+    public async Task<IActionResult> RecordPaymentBatch(
+        [FromBody] RecordVendorPaymentBatchRequest request,
+        CancellationToken cancellationToken)
     {
-        if (result.IsSuccess)
-            return StatusCode(successStatus, result.Value);
+        var result = await sender.Send(new RecordVendorPaymentBatchCommand(
+            request.PayableIds ?? [],
+            User.GetRequiredUserId(),
+            request.BankReference,
+            request.PaidOnUtc ?? DateTime.UtcNow), cancellationToken);
+        return result.IsSuccess
+            ? StatusCode(StatusCodes.Status201Created, result.Value)
+            : ToProblem(result.FirstError);
+    }
 
-        var status = result.FirstError.Type switch
+    private ObjectResult ToActionResult(Result<PayableResponse> result, int successStatus = StatusCodes.Status200OK) =>
+        result.IsSuccess ? StatusCode(successStatus, result.Value) : ToProblem(result.FirstError);
+
+    private ObjectResult ToProblem(Error error) => Problem(
+        statusCode: error.Type switch
         {
             ErrorType.Validation => StatusCodes.Status400BadRequest,
             ErrorType.NotFound => StatusCodes.Status404NotFound,
             ErrorType.Conflict => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status500InternalServerError
-        };
-        return Problem(
-            statusCode: status,
-            title: result.FirstError.Code,
-            detail: result.FirstError.Description);
-    }
+        },
+        title: error.Code,
+        detail: error.Description);
 }
 
 public sealed record CreateVendorInvoiceRequest(
@@ -91,3 +132,8 @@ public sealed record CreateVendorInvoiceRequest(
 
 public sealed record CreateVendorInvoiceLineRequest(Guid ProductId, decimal Quantity, decimal UnitPrice);
 public sealed record RecordVendorPaymentRequest(string BankReference, DateTime? PaidOnUtc);
+public sealed record PayableBatchRequest(IReadOnlyCollection<Guid>? PayableIds);
+public sealed record RecordVendorPaymentBatchRequest(
+    IReadOnlyCollection<Guid>? PayableIds,
+    string BankReference,
+    DateTime? PaidOnUtc);

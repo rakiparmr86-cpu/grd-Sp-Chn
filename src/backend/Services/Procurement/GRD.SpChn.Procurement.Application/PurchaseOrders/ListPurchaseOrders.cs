@@ -5,7 +5,9 @@ namespace GRD.SpChn.Procurement.Application.PurchaseOrders;
 
 public sealed record ListPurchaseOrdersQuery(
     Guid OrganizationUnitId,
-    bool IncludeAllOrganizationUnits)
+    bool IncludeAllOrganizationUnits,
+    DateTime? IssuedFromUtc = null,
+    DateTime? IssuedToUtc = null)
     : IRequest<IReadOnlyCollection<PurchaseOrderResponse>>;
 
 internal sealed class ListPurchaseOrdersQueryHandler(IProcurementRepository repository)
@@ -17,6 +19,8 @@ internal sealed class ListPurchaseOrdersQueryHandler(IProcurementRepository repo
         (await repository.ListPurchaseOrdersAsync(
             request.OrganizationUnitId,
             request.IncludeAllOrganizationUnits,
+            request.IssuedFromUtc,
+            request.IssuedToUtc,
             cancellationToken))
         .Select(PurchaseOrderResponse.From)
         .ToArray();
